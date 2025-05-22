@@ -2,7 +2,13 @@ package pot
 
 const MaxDepth = 256
 
-// Wedge
+/*
+Wedge is used when a new node must be created between existing nodes.
+1. The first node's children between its position and the second node's position
+2. The second node itself (if not empty)
+3. The first node's children after the second node's position
+4. Pins the first node's entry to the result
+*/
 func Wedge(acc Node, n, m CNode) {
 	Append(acc, n.Node, n.At, m.At)
 	if !Empty(m.Node) {
@@ -12,14 +18,25 @@ func Wedge(acc Node, n, m CNode) {
 	acc.Pin(n.Node.Entry())
 }
 
-// Whirl
+/*
+Whirl is used when integrating a new node into an existing structure.
+1. Appends the first node's children up to the second node's position
+2. Adds the first node at the second node's position
+3. Pins the second node's entry to the result
+*/
 func Whirl(acc Node, n, m CNode) {
 	Append(acc, n.Node, n.At, m.At)
 	acc.Append(NewAt(m.At, n.Node))
 	acc.Pin(m.Node.Entry())
 }
 
-// Whack
+/*
+Whack is used for merging operations, often when replacing a node with a different one.
+1. Appends the first node's children up to the second node's position
+2. Adds the first node at the second node's position (if not at maximum depth)
+3. Appends the second node's children from its position onwards
+4. Pins the second node's entry to the result
+*/
 func Whack(acc Node, n, m CNode) {
 	Append(acc, n.Node, n.At, m.At)
 	if m.At < MaxDepth {
@@ -38,7 +55,15 @@ func Update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 	return u, nil
 }
 
+// what `eqf` does(?)
 func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) Node {
+	/**
+	1. **Empty node case**: If target node is empty, simply pin the new entry
+	2. **Exact match case**: Update the entry if needed and use Whack to rebuild
+	3. **Empty match case**: Create a new node with the entry and use Whirl
+	4. **Special cases for proximity**: Different combinations of operations based on the node's depth and the Mode's preferences
+	5. **Recursive descent**: Using the Mode's policy to determine when to recurse into the trie
+	**/
 	if Empty(cn.Node) {
 		e := eqf(nil)
 		if e == nil {
@@ -100,6 +125,7 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) Node
 	return update(acc, cm.Next(), k, eqf, mode)
 }
 
+// Pull handles node removal and restructuring of the trie.
 func Pull(acc Node, cn CNode, mode Mode) Node {
 	if f := mode.Up(); f == nil {
 		cm := FindFork(cn, nil, mode)
@@ -120,7 +146,7 @@ func Pull(acc Node, cn CNode, mode Mode) Node {
 	return pull(acc, cn, mode)
 }
 
-func pull(acc Node, cn CNode, mode Mode) Node {
+func pull(_ Node, _ CNode, _ Mode) Node {
 	return nil
 }
 

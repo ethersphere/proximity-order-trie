@@ -9,7 +9,7 @@ import (
 var _ Node = (*DBNode)(nil)
 var _ persister.TreeNode = (*DBNode)(nil)
 
-const branches = uint32(4)
+const branches = uint32(4) // length of bytes that stores entry length and descendent count
 
 // DBNode extends MemNode with I/O persistence
 type DBNode struct {
@@ -42,6 +42,9 @@ func (n *DBNode) Children(f func(persister.TreeNode) error) error {
 }
 
 // MarshalBinary makes DBNode implement the binary.Marshaler interface
+// first 4 bytes is the entry length
+// next bytes are the entry
+// then it appends the forks: 1 byte for PO, then reference (swarm hash), 4 bytes for descendent count
 func (n *DBNode) MarshalBinary() ([]byte, error) {
 	if Empty(n) || n.Entry() == nil {
 		return nil, nil
@@ -58,10 +61,10 @@ func (n *DBNode) MarshalBinary() ([]byte, error) {
 	i := 0
 	err = n.Iterate(0, func(cn CNode) (bool, error) {
 		i++
-		buf = append(buf, uint8(cn.At))
+		buf = append(buf, uint8(cn.At)) // 1 byte for PO(?) why?
 		buf = append(buf, cn.Node.(*DBNode).Reference()...)
 		binary.BigEndian.PutUint32(sbuf, uint32(cn.Size()))
-		buf = append(buf, sbuf...)
+		buf = append(buf, sbuf...) // it sets cn descendent count.
 		return false, nil
 	})
 	if err != nil {

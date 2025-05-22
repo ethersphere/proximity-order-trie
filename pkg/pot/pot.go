@@ -58,7 +58,7 @@ func NewAt(at int, n Node) CNode {
 func (c CNode) Next() CNode {
 	// return NewAt(c.At+1, c.Node)
 	n := c.Node.Fork(c.At)
-	return CNode{c.At + 1, c.Node, c.Size() - n.Size()}
+	return CNode{c.At + 1, c.Node, c.Size() - n.Size()} // why it adds 1 to c.At (?)
 }
 
 // Size returns the number of entries (=Nodes) subsumed under the node
@@ -85,8 +85,10 @@ func Empty(n Node) bool {
 	return n == nil || n.Empty()
 }
 
+// Append set child nodes from Node (n) to another Node (b)
+// within a specific proximity range (between from and to).
 func Append(b, n Node, from, to int) {
-	b.Truncate(from)
+	b.Truncate(from) // why does it truncate until from? what will happen with those nodes? (?)
 	_ = n.Iterate(from, func(k CNode) (bool, error) {
 		if k.At < to {
 			b.Append(k)
@@ -96,7 +98,7 @@ func Append(b, n Node, from, to int) {
 	})
 }
 
-// Find finds the entry of a key
+// Find returns the entry of a key
 func Find(n Node, k []byte, mode Mode) (Entry, error) {
 	return find(NewAt(0, n), k, mode)
 }
@@ -165,7 +167,7 @@ func findNode(n CNode, k []byte, mode Mode) (CNode, error) {
 	return findNode(m, k, mode)
 }
 
-// FindNext finds the fork on a node that matches the key bytes
+// FindNext returns the fork on a node that matches the key bytes
 func FindNext(n CNode, k []byte, mode Mode) (CNode, bool) {
 	po := Compare(n.Node, k, n.At)
 	if po < mode.Depth() && po < 8*len(k) {
@@ -194,8 +196,7 @@ func FindFork(n CNode, f func(CNode) bool, mode Mode) (m CNode) {
 }
 
 // Compare compares the key of a CNode with a key, assuming the two match on a prefix of length po
-// it returns the proximity order quantifying the distance of the two keys plus
-// a boolean second return value which is true if the keys exactly match
+// it returns the proximity order quantifying the distance of the two keys
 func Compare(n Node, k []byte, at int) int {
 	return PO(n.Entry().Key(), k, at)
 }

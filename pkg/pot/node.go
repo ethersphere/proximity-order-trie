@@ -28,7 +28,7 @@ func (n *MemNode) Append(cn CNode) {
 	n.forks = append(n.forks, cn)
 }
 
-// Truncate chops forks at or after po given as arg
+// Truncate chops forks at or after `po`
 func (n *MemNode) Truncate(po int) {
 	j := 0
 	n.Iterate(0, func(cn CNode) (bool, error) {
