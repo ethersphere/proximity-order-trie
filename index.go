@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nugaon/proximity-order-trie/pkg/elements"
+	"github.com/ethersphere/proximity-order-trie/pkg/elements"
 )
 
 // Index represents a mutable pot

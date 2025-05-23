@@ -1,4 +1,4 @@
-module github.com/nugaon/proximity-order-trie
+module github.com/ethersphere/proximity-order-trie
 
 go 1.24.0
 

@@ -5,8 +5,8 @@ import (
 	"math/rand"
 	"testing"
 
-	pot "github.com/nugaon/proximity-order-trie"
-	"github.com/nugaon/proximity-order-trie/pkg/persister"
+	pot "github.com/ethersphere/proximity-order-trie"
+	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 	"github.com/stretchr/testify/assert"
 )
 

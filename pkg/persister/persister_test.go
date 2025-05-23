@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nugaon/proximity-order-trie/pkg/persister"
+	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
 
 const (
