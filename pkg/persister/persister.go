@@ -20,6 +20,26 @@ type TreeNode interface {
 	encoding.BinaryUnmarshaler
 }
 
+type InmemLoadSaver struct {
+	store map[string][]byte
+}
+
+func NewInmemLoadSaver() *InmemLoadSaver {
+	return &InmemLoadSaver{
+		store: make(map[string][]byte),
+	}
+}
+
+func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, error) {
+	return ls.store[string(reference)], nil
+}
+
+func (ls *InmemLoadSaver) Save(ctx context.Context, data []byte) ([]byte, error) {
+	ref := string(data)
+	ls.store[ref] = data
+	return []byte(ref), nil
+}
+
 // Load uses a Loader to unmarshal a tree node from a reference
 func Load(ctx context.Context, ls LoadSaver, n TreeNode) error {
 	b, err := ls.Load(ctx, n.Reference())
