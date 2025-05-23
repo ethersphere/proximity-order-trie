@@ -3,7 +3,7 @@ package elements
 import (
 	"encoding/binary"
 
-	"github.com/nugaon/proximity-order-trie/pkg/persister"
+	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
 
 var _ Node = (*SwarmNode)(nil)
