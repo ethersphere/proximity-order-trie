@@ -1,14 +1,14 @@
-package proximityordertrie
+package pot
 
 import (
 	"bytes"
 	"fmt"
 
-	"github.com/nugaon/proximity-order-trie/pkg/pot"
+	"github.com/nugaon/proximity-order-trie/pkg/elements"
 )
 
 // Entry implements pot Entry
-var _ pot.Entry = (*SwarmEntry)(nil)
+var _ elements.Entry = (*SwarmEntry)(nil)
 
 type SwarmEntry struct {
 	key []byte
@@ -35,7 +35,7 @@ func (e *SwarmEntry) String() string {
 	return fmt.Sprintf("key: %x; val: %v", e.key, e.val)
 }
 
-func (e *SwarmEntry) Equal(v pot.Entry) bool {
+func (e *SwarmEntry) Equal(v elements.Entry) bool {
 	ev, ok := v.(*SwarmEntry)
 	if !ok {
 		return false
