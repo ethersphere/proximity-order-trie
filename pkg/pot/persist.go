@@ -6,91 +6,115 @@ import (
 	"github.com/nugaon/proximity-order-trie/pkg/persister"
 )
 
-var _ Node = (*DBNode)(nil)
-var _ persister.TreeNode = (*DBNode)(nil)
+var _ Node = (*SwarmNode)(nil)
+var _ persister.TreeNode = (*SwarmNode)(nil)
 
-const branches = uint32(4) // length of bytes that stores entry length and descendent count
-
-// DBNode extends MemNode with I/O persistence
-type DBNode struct {
+// SwarmNode extends MemNode with I/O persistence
+type SwarmNode struct {
 	*MemNode
 	ref  []byte
 	newf func() Entry
 }
 
 // Empty returns true if no entry is pinned to the Node
-func (n *DBNode) Empty() bool {
+func (n *SwarmNode) Empty() bool {
 	return n.MemNode == nil && n.ref == nil || n.MemNode.Empty()
 }
 
-// Reference returns the reference to the node to be used to load&unpack the node from disk storage
-func (n *DBNode) Reference() []byte {
+// Reference returns the reference
+func (n *SwarmNode) Reference() []byte {
 	return n.ref
 }
 
 // SetReference sets the reference to the node to be used to load&unpack the node from disk storage
-func (n *DBNode) SetReference(ref []byte) {
+func (n *SwarmNode) SetReference(ref []byte) {
 	n.ref = ref
 }
 
 // Children iterates over children
-func (n *DBNode) Children(f func(persister.TreeNode) error) error {
+func (n *SwarmNode) Children(f func(persister.TreeNode) error) error {
 	g := func(cn CNode) (bool, error) {
-		return false, f(cn.Node.(*DBNode))
+		return false, f(cn.Node.(*SwarmNode))
 	}
 	return n.Iterate(0, g)
 }
 
-// MarshalBinary makes DBNode implement the binary.Marshaler interface
-// first 4 bytes is the entry length
-// next bytes are the entry
-// then it appends the forks: 1 byte for PO, then reference (swarm hash), 4 bytes for descendent count
-func (n *DBNode) MarshalBinary() ([]byte, error) {
+// MarshalBinary makes SwarmNode implement the binary.Marshaler interface
+func (n *SwarmNode) MarshalBinary() ([]byte, error) {
 	if Empty(n) || n.Entry() == nil {
 		return nil, nil
 	}
-	entry, err := n.Entry().MarshalBinary()
+	keyBytes := n.Entry().Key()
+	valueBytes, err := n.Entry().MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	l := len(entry)
-	buf := make([]byte, l+int(branches))
-	binary.BigEndian.PutUint32(buf, uint32(l))
-	copy(buf[branches:], entry)
-	var sbuf = make([]byte, branches)
-	i := 0
+
+	// bitMap is a bitmap of the children
+	// it is used to store the children in a sparse array
+	bitMap := make([]byte, 32)
+	valueBytes = append(valueBytes, keyBytes...)
+
+	setBitMap := func(n uint8) {
+		bitMap[n/8] |= 1 << (n % 8)
+	}
+
+	forRefBytes := make([]byte, 0)
+	forkSizesBytes := make([]byte, 0)
+	sbuf := make([]byte, 4)
 	err = n.Iterate(0, func(cn CNode) (bool, error) {
-		i++
-		buf = append(buf, uint8(cn.At)) // 1 byte for PO(?) why?
-		buf = append(buf, cn.Node.(*DBNode).Reference()...)
+		setBitMap(uint8(cn.At))
+		forRefBytes = append(forRefBytes, cn.Node.(*SwarmNode).Reference()...)
 		binary.BigEndian.PutUint32(sbuf, uint32(cn.Size()))
-		buf = append(buf, sbuf...) // it sets cn descendent count.
+		forkSizesBytes = append(forkSizesBytes, sbuf...)
 		return false, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return buf, nil
+	return append(
+		keyBytes,
+		append(bitMap,
+			append(forRefBytes,
+				append(forkSizesBytes, valueBytes...)...)...)...,
+	), nil
 }
 
-// UnmarshalBinary makes DBNode implement the binary.Unmarshaler interface
-// TODO: magic numbers  12, 4, 8 ? -> gives index out of range error
-func (n *DBNode) UnmarshalBinary(buf []byte) error {
-	// unmarshal entry
-	l := binary.BigEndian.Uint32(buf[:branches])
+// UnmarshalBinary makes SwarmNode implement the binary.Unmarshaler interface
+func (n *SwarmNode) UnmarshalBinary(buf []byte) error {
+	// reset forks
+	n.forks = make([]CNode, 0)
+
+	keyBytes := buf[:32]
+	bitMap := buf[32:64]
+	frLength := 32
+	c := 0
+	poMap := make([]int8, 0, 32)
+	for i := 0; i < 256; i++ {
+		if bitMap[i/8]&(1<<(i%8)) != 0 {
+			poMap = append(poMap, int8(i))
+			c++
+		}
+	}
+
+	// unmarshall forks as packed child nodes to be lazy loaded
+	for i := 0; i < c; i++ {
+		forkRef := buf[64+i*frLength : 64+(i+1)*frLength]
+		size := binary.BigEndian.Uint32(buf[64+c*frLength+i*4 : 64+c*frLength+(i+1)*4])
+		cn := CNode{
+			At:   int(poMap[i]),
+			Node: &SwarmNode{ref: forkRef, newf: n.newf},
+			size: int(size),
+		}
+		n.Append(cn)
+	}
+
+	// pin entry
+	offset := 64 + c*frLength + c*4
 	e := n.newf()
-	if err := e.UnmarshalBinary(buf[branches : branches+l]); err != nil {
+	if err := e.UnmarshalBinary(append(keyBytes, buf[offset:]...)); err != nil {
 		return err
 	}
 	n.Pin(e)
-	// unmarshall forks as packed child nodes to be lazy loaded
-	buflen := uint32(len(buf))
-	for i := branches + l; i < buflen && i+12 < buflen && i+8 < buflen; i += 12 {
-		at := int(buf[i])
-		m := &DBNode{ref: buf[i+1 : i+8], newf: n.newf}
-		size := binary.BigEndian.Uint32(buf[i+8 : i+12])
-		cn := CNode{at, m, int(size)}
-		n.Append(cn)
-	}
 	return nil
 }
