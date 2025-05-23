@@ -1,4 +1,4 @@
-package pot
+package elements
 
 const MaxDepth = 256
 

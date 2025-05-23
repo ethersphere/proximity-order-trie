@@ -1,4 +1,4 @@
-package pot
+package elements
 
 import (
 	"encoding/binary"
