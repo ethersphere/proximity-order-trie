@@ -1,12 +1,12 @@
-package proximityordertrie
+package pot
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
+	"github.com/nugaon/proximity-order-trie/pkg/elements"
 	"github.com/nugaon/proximity-order-trie/pkg/persister"
-	"github.com/nugaon/proximity-order-trie/pkg/pot"
 )
 
 var _ KeyValueStore = (*swarmKvs)(nil)
@@ -31,8 +31,8 @@ type swarmKvs struct {
 
 // NewSwarmKvs creates a new key-value store with pot as the underlying storage.
 func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
-	basePotMode := pot.NewSingleOrder(256)
-	mode := pot.NewSwarmPot(basePotMode, ls, func() pot.Entry { return &SwarmEntry{} })
+	basePotMode := elements.NewSingleOrder(256)
+	mode := elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &SwarmEntry{} })
 	idx, err := New(mode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pot: %w", err)
@@ -45,8 +45,8 @@ func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
 
 // NewSwarmKvsReference loads a key-value store from the given root hash with pot as the underlying storage.
 func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*swarmKvs, error) {
-	basePotMode := pot.NewSingleOrder(256)
-	mode := pot.NewPersistedPotReference(basePotMode, ls, ref, func() pot.Entry { return &SwarmEntry{} })
+	basePotMode := elements.NewSingleOrder(256)
+	mode := elements.NewPersistedPotReference(basePotMode, ls, ref, func() elements.Entry { return &SwarmEntry{} })
 	idx, err := NewReference(mode, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pot reference: %w", err)
