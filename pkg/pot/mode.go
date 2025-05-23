@@ -75,31 +75,31 @@ func (so SingleOrder) Update(root Node, k []byte, f func(Entry) Entry) (Node, er
 	return Update(so.New(), NewAt(0, root), k, f, so)
 }
 
-// Mode for persisted pots
-type PersistedPot struct {
+// Mode for Swarm persisted pots
+type SwarmPot struct {
 	Mode                     // non-persisted mode
 	n    Node                // root node
 	ls   persister.LoadSaver // persister interface to save pointer based data structure nodes
 	newf func() Entry        // pot entry constructor function
 }
 
-// NewPersistedPot constructs a Mode for persisted pots
-func NewPersistedPot(mode Mode, ls persister.LoadSaver, newf func() Entry) *PersistedPot {
-	return &PersistedPot{Mode: mode, n: &DBNode{newf: newf, MemNode: &MemNode{}}, ls: ls, newf: newf}
+// NewSwarmPot constructs a Mode for persisted pots
+func NewSwarmPot(mode Mode, ls persister.LoadSaver, newf func() Entry) *SwarmPot {
+	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}}, ls: ls, newf: newf}
 }
 
 // NewPersistedPot constructs a Mode for persisted pots with a reference
-func NewPersistedPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func() Entry) *PersistedPot {
-	return &PersistedPot{Mode: mode, n: &DBNode{newf: newf, MemNode: &MemNode{}, ref: ref}, ls: ls, newf: newf}
+func NewPersistedPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func() Entry) *SwarmPot {
+	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}, ref: ref}, ls: ls, newf: newf}
 }
 
 // newPacked constructs a packed node that allows loading via its reference
-func (pm *PersistedPot) NewPacked(ref []byte) *DBNode {
-	return &DBNode{newf: pm.newf, ref: ref}
+func (pm *SwarmPot) NewPacked(ref []byte) *SwarmNode {
+	return &SwarmNode{newf: pm.newf, ref: ref}
 }
 
 // Load loads the pot by reading the root reference from a file and creating the root node
-func (pm *PersistedPot) Load(ctx context.Context, ref []byte) (r Node, loaded bool, err error) {
+func (pm *SwarmPot) Load(ctx context.Context, ref []byte) (r Node, loaded bool, err error) {
 	root := pm.NewPacked(ref)
 	root.MemNode = &MemNode{}
 	if err := persister.Load(ctx, pm.ls, root); err != nil {
@@ -110,21 +110,21 @@ func (pm *PersistedPot) Load(ctx context.Context, ref []byte) (r Node, loaded bo
 }
 
 // Save persists the root node reference
-func (pm *PersistedPot) Save(ctx context.Context) ([]byte, error) {
+func (pm *SwarmPot) Save(ctx context.Context) ([]byte, error) {
 	if pm.n == nil {
 		return nil, fmt.Errorf("node is nil")
 	}
 
-	err := persister.Save(ctx, pm.ls, pm.n.(*DBNode))
+	err := persister.Save(ctx, pm.ls, pm.n.(*SwarmNode))
 	if err != nil {
 		return nil, fmt.Errorf("pot save: %w", err)
 	}
 
-	return pm.n.(*DBNode).Reference(), nil
+	return pm.n.(*SwarmNode).Reference(), nil
 }
 
 // Update builds on the generic Update
-func (pm *PersistedPot) Update(root Node, k []byte, f func(Entry) Entry) (Node, error) {
+func (pm *SwarmPot) Update(root Node, k []byte, f func(Entry) Entry) (Node, error) {
 	update, err := Update(pm.New(), NewAt(0, root), k, f, pm)
 	if err != nil {
 		return nil, err
@@ -135,20 +135,20 @@ func (pm *PersistedPot) Update(root Node, k []byte, f func(Entry) Entry) (Node, 
 
 // Pack serialises and saves the object
 // once a new node is saved it can be delinked as node from memory
-func (pm *PersistedPot) Pack(n Node) error {
+func (pm *SwarmPot) Pack(n Node) error {
 	if n == nil {
 		return nil // nothing to save
 	}
-	return persister.Save(context.Background(), pm.ls, n.(*DBNode))
+	return persister.Save(context.Background(), pm.ls, n.(*SwarmNode))
 }
 
 // TODO: FindNext & itarte calls Unpack causing the pot node to be loaded.
 // Unpack loads and deserialises node into memory
-func (pm *PersistedPot) Unpack(n Node) error {
+func (pm *SwarmPot) Unpack(n Node) error {
 	if n == nil {
 		return nil
 	}
-	dn := n.(*DBNode)
+	dn := n.(*SwarmNode)
 	if dn.MemNode != nil {
 		return nil
 	}
@@ -157,6 +157,6 @@ func (pm *PersistedPot) Unpack(n Node) error {
 }
 
 // New constructs a new node
-func (pm *PersistedPot) New() Node {
-	return &DBNode{newf: pm.newf, MemNode: &MemNode{}}
+func (pm *SwarmPot) New() Node {
+	return &SwarmNode{newf: pm.newf, MemNode: &MemNode{}}
 }
