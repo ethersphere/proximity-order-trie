@@ -31,7 +31,7 @@ func New(mode elements.Mode) (*Index, error) {
 	return idx, nil
 }
 
-// New constructs a new mutable pot from a reference
+// NewReference constructs a new mutable pot from a reference
 func NewReference(mode elements.Mode, ref []byte) (*Index, error) {
 	idx := &Index{
 		mode:  mode,

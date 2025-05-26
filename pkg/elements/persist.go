@@ -44,16 +44,16 @@ func (n *SwarmNode) MarshalBinary() ([]byte, error) {
 	if Empty(n) || n.Entry() == nil {
 		return nil, nil
 	}
-	keyBytes := n.Entry().Key()
-	valueBytes, err := n.Entry().MarshalBinary()
+	entryBytes, err := n.Entry().MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
+	keyBytes := entryBytes[:32]
+	valueBytes := entryBytes[32:]
 
 	// bitMap is a bitmap of the children
 	// it is used to store the children in a sparse array
 	bitMap := make([]byte, 32)
-	valueBytes = append(valueBytes, keyBytes...)
 
 	setBitMap := func(n uint8) {
 		bitMap[n/8] |= 1 << (n % 8)
@@ -111,8 +111,9 @@ func (n *SwarmNode) UnmarshalBinary(buf []byte) error {
 
 	// pin entry
 	offset := 64 + c*frLength + c*4
+	elementBytes := append(keyBytes, buf[offset:]...)
 	e := n.newf()
-	if err := e.UnmarshalBinary(append(keyBytes, buf[offset:]...)); err != nil {
+	if err := e.UnmarshalBinary(elementBytes); err != nil {
 		return err
 	}
 	n.Pin(e)
