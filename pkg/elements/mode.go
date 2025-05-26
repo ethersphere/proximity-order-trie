@@ -88,8 +88,8 @@ func NewSwarmPot(mode Mode, ls persister.LoadSaver, newf func() Entry) *SwarmPot
 	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}}, ls: ls, newf: newf}
 }
 
-// NewPersistedPot constructs a Mode for persisted pots with a reference
-func NewPersistedPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func() Entry) *SwarmPot {
+// NewSwarmPotReference constructs a Mode for persisted pots with a reference
+func NewSwarmPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func() Entry) *SwarmPot {
 	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}, ref: ref}, ls: ls, newf: newf}
 }
 

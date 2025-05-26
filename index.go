@@ -143,6 +143,12 @@ func (idx *Index) Save(ctx context.Context) ([]byte, error) {
 	return idx.mode.Save(ctx)
 }
 
+// Close quits the process loop and closes the mode
+func (idx *Index) Close() error {
+	close(idx.quit)
+	return nil
+}
+
 // String pretty prints the current state of the pot
 func (idx *Index) String() string {
 	root := <-idx.read

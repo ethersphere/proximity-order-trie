@@ -4,7 +4,10 @@ go 1.24.0
 
 require github.com/stretchr/testify v1.8.4
 
-require golang.org/x/crypto v0.15.0
+require (
+	golang.org/x/crypto v0.15.0
+	golang.org/x/sync v0.14.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
