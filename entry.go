@@ -54,8 +54,11 @@ func (e *SwarmEntry) UnmarshalBinary(v []byte) error {
 	if len(v) < 32 {
 		return fmt.Errorf("invalid entry size: %d", len(v))
 	}
-
-	copy(e.key, v[:32])
-	copy(e.val, v[32:])
+	key := make([]byte, 32)
+	copy(key[:], v[:32])
+	e.key = key
+	val := make([]byte, len(v)-32)
+	copy(val[:], v[32:])
+	e.val = val
 	return nil
 }
