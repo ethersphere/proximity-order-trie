@@ -3,6 +3,9 @@ package persister
 import (
 	"context"
 	"encoding"
+	"fmt"
+
+	"golang.org/x/crypto/sha3"
 )
 
 // LoadSaver to be implemented as thin wrappers around persistent key-value storage
@@ -21,23 +24,35 @@ type TreeNode interface {
 }
 
 type InmemLoadSaver struct {
-	store map[string][]byte
+	store map[[32]byte][]byte
 }
 
 func NewInmemLoadSaver() *InmemLoadSaver {
 	return &InmemLoadSaver{
-		store: make(map[string][]byte),
+		store: make(map[[32]byte][]byte),
 	}
 }
 
 func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, error) {
-	return ls.store[string(reference)], nil
+	if len(reference) != 32 {
+		return nil, fmt.Errorf("reference must be 32 bytes, got %d", len(reference))
+	}
+	var refArr [32]byte
+	copy(refArr[:], reference)
+	data, ok := ls.store[refArr]
+	if !ok {
+		return nil, fmt.Errorf("reference not found")
+	}
+	return data, nil
 }
 
 func (ls *InmemLoadSaver) Save(ctx context.Context, data []byte) ([]byte, error) {
-	ref := string(data)
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(data)
+	var ref [32]byte
+	copy(ref[:], hasher.Sum(nil))
 	ls.store[ref] = data
-	return []byte(ref), nil
+	return ref[:], nil
 }
 
 // Load uses a Loader to unmarshal a tree node from a reference
