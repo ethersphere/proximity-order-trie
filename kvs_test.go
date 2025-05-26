@@ -51,7 +51,7 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.True(t, len(ref) > 0)
 	})
 	t.Run("Save KVS with one item, no error, pre-save value exist", func(t *testing.T) {
-		s1, _ := pot.NewSwarmKvsReference(ls, nil)
+		s1, _ := pot.NewSwarmKvs(ls)
 
 		err := s1.Put(ctx, key1, val1)
 		assert.NoError(t, err)
