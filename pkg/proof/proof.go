@@ -139,7 +139,7 @@ func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 	prover := NewBMTProver()
 	prover.SetHeaderInt64(int64(len(nodeData)))
 	prover.Write(nodeData)
-
+	_ = prover.Sum(nil) // necessary to fill up bmt field of prover
 	// prove bitMap for calculating entrySegementIndex
 	// along with the element's full key
 	bitVectorProof := prover.Proof(1)
@@ -149,4 +149,34 @@ func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 		EntryProof:     &entryProof,
 		BitVectorProof: &bitVectorProof,
 	}, nil
+}
+
+// ValidateEntryProof validates an entry proof against a given Swarm hash
+// Returns nil if the proof is valid, otherwise returns an error
+func ValidateEntryProof(nodeHash []byte, proof *EntryProof) error {
+	if proof == nil {
+		return fmt.Errorf("nil entry proof")
+	}
+
+	if len(nodeHash) != 32 {
+		return fmt.Errorf("invalid node hash length: %d, expected 32", len(nodeHash))
+	}
+
+	hashcalc1, err := Verify(*proof.BitVectorProof)
+	if err != nil {
+		return fmt.Errorf("bitvector proof verification failed: %w", err)
+	}
+	hashcalc2, err := Verify(*proof.EntryProof)
+	if err != nil {
+		return fmt.Errorf("entry proof verification failed: %w", err)
+	}
+
+	if !bytes.Equal(hashcalc1, hashcalc2) {
+		return fmt.Errorf("BitVectorProof and EntryProof do not match")
+	}
+	if !bytes.Equal(hashcalc1, nodeHash) {
+		return fmt.Errorf("calculated proof hashes and the nodeHash do not match")
+	}
+
+	return nil
 }
