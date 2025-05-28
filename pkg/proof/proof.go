@@ -2,7 +2,6 @@ package proof
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 
 	"github.com/ethersphere/bee/v2/pkg/bmt"
@@ -18,7 +17,7 @@ type BMTProver struct {
 // NewBMTProver creates a new BMT prover instance
 func NewBMTProver() *BMTProver {
 	hasherFunc := sha3.NewLegacyKeccak256
-	pool := bmt.NewPool(bmt.NewConf(hasherFunc, 128, 0))
+	pool := bmt.NewPool(bmt.NewConf(hasherFunc, 128, 1))
 
 	return &BMTProver{
 		Prover: &bmt.Prover{Hasher: pool.Get()},
@@ -111,14 +110,15 @@ type EntryProof struct {
 // The nodeData should be the binary representation of the node containing the entry
 func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 	// TODO: proof for more than one segment entry
-	if len(nodeData) == 0 {
+	dl := len(nodeData)
+	if dl == 0 {
 		return nil, fmt.Errorf("empty node data")
 	}
 
 	bitMap := nodeData[32:64]
 	oneCount := 0
 	for i := 0; i < elements.MaxDepth; i++ {
-		if bitMap[i/8]&(1<<(7-i%8)) == 1 {
+		if (bitMap[i/8]>>(7-i%8))&1 == 1 {
 			oneCount++
 		}
 	}
@@ -130,11 +130,8 @@ func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 	}
 	entryOffset := 64 + oneCount*32 + oneCount*4 + paddingBytes
 
-	// Extract entry size - this is typically stored as a 4-byte uint32 before the entry data
-	// The exact location depends on the node structure and how the entry is stored
-	entrySize := binary.BigEndian.Uint32(nodeData[entryOffset:])
-	if entrySize == 0 {
-		return nil, fmt.Errorf("entry size is 0")
+	if entryOffset >= dl {
+		return nil, fmt.Errorf("entry offset is out of bounds")
 	}
 
 	entrySegmentIndex := entryOffset / 32
