@@ -101,23 +101,19 @@ func CreateForkNodeProof(parentData, targetKey []byte) (*ForkNodeProof, error) {
 
 // EntryProof contains the proof data for an entry value
 type EntryProof struct {
-	// Proof is the BMT proof for the entry value
-	Proof *bmt.Proof
-	// Size is the size of the entry value in bytes
-	Size uint32
-	// NodeKey is the key of the node containing the entry
-	NodeKey []byte
+	// EntryProof is the BMT proof for the entry value
+	EntryProof *bmt.Proof
+	// BitVectorProof is the BMT proof for the bitvector and the node's key
+	BitVectorProof *bmt.Proof
 }
 
 // CreateEntryProof generates a proof for an entry value within a node
 // The nodeData should be the binary representation of the node containing the entry
 func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
+	// TODO: proof for more than one segment entry
 	if len(nodeData) == 0 {
 		return nil, fmt.Errorf("empty node data")
 	}
-
-	// Extract the node key (first 32 bytes)
-	nodeKey := nodeData[:32]
 
 	bitMap := nodeData[32:64]
 	oneCount := 0
@@ -127,8 +123,12 @@ func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 		}
 	}
 
-	// TODO: padding after descendantCounts
-	entryOffset := 64 + oneCount*32 + oneCount*4
+	takenBytes := (oneCount * 4) % 32
+	paddingBytes := 0
+	if takenBytes > 0 {
+		paddingBytes = 32 - takenBytes
+	}
+	entryOffset := 64 + oneCount*32 + oneCount*4 + paddingBytes
 
 	// Extract entry size - this is typically stored as a 4-byte uint32 before the entry data
 	// The exact location depends on the node structure and how the entry is stored
@@ -137,17 +137,19 @@ func CreateEntryProof(nodeData []byte) (*EntryProof, error) {
 		return nil, fmt.Errorf("entry size is 0")
 	}
 
-	segmentIndex := entryOffset / 32
+	entrySegmentIndex := entryOffset / 32
 
 	prover := NewBMTProver()
 	prover.SetHeaderInt64(int64(len(nodeData)))
 	prover.Write(nodeData)
 
-	entryProof := prover.Proof(segmentIndex)
+	// prove bitMap for calculating entrySegementIndex
+	// along with the element's full key
+	bitVectorProof := prover.Proof(1)
+	entryProof := prover.Proof(entrySegmentIndex)
 
 	return &EntryProof{
-		Proof:   &entryProof,
-		Size:    entrySize,
-		NodeKey: nodeKey,
+		EntryProof:     &entryProof,
+		BitVectorProof: &bitVectorProof,
 	}, nil
 }
