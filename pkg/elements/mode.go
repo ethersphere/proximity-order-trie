@@ -77,19 +77,19 @@ func (so SingleOrder) Update(root Node, k []byte, f func(Entry) Entry) (Node, er
 
 // Mode for Swarm persisted pots
 type SwarmPot struct {
-	Mode                     // non-persisted mode
-	n    Node                // root node
-	ls   persister.LoadSaver // persister interface to save pointer based data structure nodes
-	newf func() Entry        // pot entry constructor function
+	Mode                        // non-persisted mode
+	n    Node                   // root node
+	ls   persister.LoadSaver    // persister interface to save pointer based data structure nodes
+	newf func(key []byte) Entry // pot entry constructor function. Entry must set the given key
 }
 
 // NewSwarmPot constructs a Mode for persisted pots
-func NewSwarmPot(mode Mode, ls persister.LoadSaver, newf func() Entry) *SwarmPot {
+func NewSwarmPot(mode Mode, ls persister.LoadSaver, newf func(key []byte) Entry) *SwarmPot {
 	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}}, ls: ls, newf: newf}
 }
 
 // NewSwarmPotReference constructs a Mode for persisted pots with a reference
-func NewSwarmPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func() Entry) *SwarmPot {
+func NewSwarmPotReference(mode Mode, ls persister.LoadSaver, ref []byte, newf func(key []byte) Entry) *SwarmPot {
 	return &SwarmPot{Mode: mode, n: &SwarmNode{newf: newf, MemNode: &MemNode{}, ref: ref}, ls: ls, newf: newf}
 }
 

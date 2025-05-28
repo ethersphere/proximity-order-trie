@@ -2,6 +2,7 @@ package elements
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
@@ -13,7 +14,14 @@ var _ persister.TreeNode = (*SwarmNode)(nil)
 type SwarmNode struct {
 	*MemNode
 	ref  []byte
-	newf func() Entry
+	newf func(key []byte) Entry
+}
+
+func NewSwarmNode(newf func(key []byte) Entry) *SwarmNode {
+	return &SwarmNode{
+		newf:    newf,
+		MemNode: &MemNode{},
+	}
 }
 
 // Empty returns true if no entry is pinned to the Node
@@ -44,12 +52,14 @@ func (n *SwarmNode) MarshalBinary() ([]byte, error) {
 	if Empty(n) || n.Entry() == nil {
 		return nil, nil
 	}
-	entryBytes, err := n.Entry().MarshalBinary()
+	valueBytes, err := n.Entry().MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	keyBytes := entryBytes[:32]
-	valueBytes := entryBytes[32:]
+	keyBytes := n.Entry().Key()
+	if len(keyBytes) != 32 {
+		return nil, fmt.Errorf("invalid key size for Swarm Pot Node: %d", len(keyBytes))
+	}
 
 	// bitMap is a bitmap of the children
 	// it is used to store the children in a sparse array
@@ -123,8 +133,8 @@ func (n *SwarmNode) UnmarshalBinary(buf []byte) error {
 
 	// pin entry
 	offset := 64 + c*frLength + c*4 + paddingBytes
-	elementBytes := append(keyBytes, buf[offset:]...)
-	e := n.newf()
+	elementBytes := buf[offset:]
+	e := n.newf(keyBytes)
 	if err := e.UnmarshalBinary(elementBytes); err != nil {
 		return err
 	}

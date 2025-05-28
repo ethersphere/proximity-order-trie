@@ -41,16 +41,13 @@ func eq(m, n *mockEntry) bool {
 }
 
 func (m *mockEntry) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, len(m.key)+4)
-	copy(buf, m.key)
-	binary.BigEndian.PutUint32(buf[len(m.key):], uint32(m.val))
+	buf := make([]byte, 32)
+	binary.BigEndian.PutUint32(buf[28:32], uint32(m.val))
 	return buf, nil
 }
 
 func (m *mockEntry) UnmarshalBinary(buf []byte) error {
-	m.key = make([]byte, len(buf)-4)
-	copy(m.key, buf)
-	m.val = int(binary.BigEndian.Uint32(buf[len(m.key):]))
+	m.val = int(binary.BigEndian.Uint32(buf[28:32]))
 	return nil
 }
 
@@ -255,7 +252,7 @@ func TestIterate(t *testing.T) {
 	})
 	t.Run("persisted", func(t *testing.T) {
 		ls := persister.NewInmemLoadSaver()
-		mode := elements.NewSwarmPot(elements.NewSingleOrder(32), ls, func() elements.Entry { return &mockEntry{} })
+		mode := elements.NewSwarmPot(elements.NewSingleOrder(32), ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 		idx, err := pot.New(mode)
 		if err != nil {
 			t.Fatal(err)
@@ -309,7 +306,7 @@ func TestSize(t *testing.T) {
 	})
 	t.Run("persisted", func(t *testing.T) {
 		ls := persister.NewInmemLoadSaver()
-		mode := elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &mockEntry{} })
+		mode := elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 		idx, err := pot.New(mode)
 		if err != nil {
 			t.Fatal(err)
@@ -323,7 +320,7 @@ func TestPersistence(t *testing.T) {
 	count := 200
 
 	ls := persister.NewInmemLoadSaver()
-	mode := elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &mockEntry{} })
+	mode := elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 	idx, err := pot.New(mode)
 	if err != nil {
 		t.Fatal(err)
@@ -338,7 +335,7 @@ func TestPersistence(t *testing.T) {
 	idx.Close()
 
 	ls = persister.NewInmemLoadSaver()
-	mode = elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &mockEntry{} })
+	mode = elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 	idx, err = pot.New(mode)
 	if err != nil {
 		t.Fatal(err)
@@ -438,7 +435,7 @@ func TestConcurrency(t *testing.T) {
 	})
 	t.Run("persisted", func(t *testing.T) {
 		ls := persister.NewInmemLoadSaver()
-		mode := elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &mockEntry{} })
+		mode := elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 		idx, err := pot.New(mode)
 		if err != nil {
 			t.Fatal(err)

@@ -32,7 +32,7 @@ type swarmKvs struct {
 // NewSwarmKvs creates a new key-value store with pot as the underlying storage.
 func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
 	basePotMode := elements.NewSingleOrder(256)
-	mode := elements.NewSwarmPot(basePotMode, ls, func() elements.Entry { return &SwarmEntry{} })
+	mode := elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &SwarmEntry{key: key} })
 	idx, err := New(mode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pot: %w", err)
@@ -46,7 +46,7 @@ func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
 // NewSwarmKvsReference loads a key-value store from the given root hash with pot as the underlying storage.
 func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*swarmKvs, error) {
 	basePotMode := elements.NewSingleOrder(256)
-	mode := elements.NewSwarmPotReference(basePotMode, ls, ref, func() elements.Entry { return &SwarmEntry{} })
+	mode := elements.NewSwarmPotReference(basePotMode, ls, ref, func(key []byte) elements.Entry { return &SwarmEntry{key: key} })
 	idx, err := NewReference(mode, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pot reference: %w", err)
