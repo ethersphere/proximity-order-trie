@@ -16,8 +16,8 @@ type ForkPathProof struct {
 	RootReference []byte
 	// TargetKey is the key we were looking for
 	TargetKey []byte
-	// FinalNodeData contains the final node data if the path completes successfully
-	FinalNodeData []byte
+	// EntryProof contains the value proof for the target key
+	EntryProof *EntryProof
 }
 
 // CreateForkPathProof generates a path of proofs from the root node to the target key.
@@ -66,7 +66,11 @@ func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetK
 			// If we've reached the target key, we're done
 			if err.Error() == "parent key and target key are the same" {
 				// Save the final node data
-				path.FinalNodeData = currentNodeData
+				entryProof, err := CreateEntryProof(currentNodeData)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create entry proof: %w", err)
+				}
+				path.EntryProof = entryProof
 				break
 			}
 			return nil, fmt.Errorf("failed to create fork node proof: %w", err)
