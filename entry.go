@@ -44,21 +44,10 @@ func (e *SwarmEntry) Equal(v elements.Entry) bool {
 }
 
 func (e *SwarmEntry) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 32+len(e.val))
-	copy(buf[:32], e.key)
-	copy(buf[32:], e.val)
-	return buf, nil
+	return e.val, nil
 }
 
 func (e *SwarmEntry) UnmarshalBinary(v []byte) error {
-	if len(v) < 32 {
-		return fmt.Errorf("invalid entry size: %d", len(v))
-	}
-	key := make([]byte, 32)
-	copy(key[:], v[:32])
-	e.key = key
-	val := make([]byte, len(v)-32)
-	copy(val[:], v[32:])
-	e.val = val
+	e.val = v
 	return nil
 }
