@@ -72,6 +72,11 @@ func (n *SwarmNode) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// padding after descendantCounts
+	takenBytes := len(forkSizesBytes) % 32
+	if takenBytes > 0 {
+		forkSizesBytes = append(forkSizesBytes, make([]byte, 32-takenBytes)...)
+	}
 	return append(
 		keyBytes,
 		append(bitMap,
@@ -109,8 +114,15 @@ func (n *SwarmNode) UnmarshalBinary(buf []byte) error {
 		n.Append(cn)
 	}
 
+	// padding after descendantCounts
+	takenBytes := (c * 4) % 32
+	paddingBytes := 0
+	if takenBytes > 0 {
+		paddingBytes = 32 - takenBytes
+	}
+
 	// pin entry
-	offset := 64 + c*frLength + c*4
+	offset := 64 + c*frLength + c*4 + paddingBytes
 	elementBytes := append(keyBytes, buf[offset:]...)
 	e := n.newf()
 	if err := e.UnmarshalBinary(elementBytes); err != nil {
