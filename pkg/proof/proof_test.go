@@ -1,10 +1,12 @@
 package proof
 
 import (
+	"context"
 	"testing"
 
 	pot "github.com/ethersphere/proximity-order-trie"
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
+	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
 
 func TestCreateEntryProof(t *testing.T) {
@@ -28,12 +30,12 @@ func TestCreateEntryProof(t *testing.T) {
 		},
 		{
 			name:     "valid node data without children",
-			nodeData: createValidNodeData(0),
+			nodeData: createValidNodeData(0, nil),
 			wantErr:  false,
 		},
 		{
 			name:     "valid node data with 3 children",
-			nodeData: createValidNodeData(3),
+			nodeData: createValidNodeData(3, nil),
 			wantErr:  false,
 		},
 	}
@@ -46,7 +48,7 @@ func TestCreateEntryProof(t *testing.T) {
 		errorContains string
 	}{
 		name:     "valid node data with many children",
-		nodeData: createValidNodeData(10), // Create a node with 10 children
+		nodeData: createValidNodeData(10, nil), // Create a node with 10 children
 	})
 
 	for _, tt := range tests {
@@ -102,22 +104,39 @@ func createNodeWithZeroEntrySize() []byte {
 }
 
 // createValidNodeData creates valid node data with an entry and the specified number of child nodes
-func createValidNodeData(childCount int) []byte {
+func createValidNodeData(childCount int, ls persister.LoadSaver) []byte {
 	node := elements.NewSwarmNode(func(key []byte) elements.Entry { e, _ := pot.NewSwarmEntry(key, make([]byte, 0)); return e })
-	entry, _ := pot.NewSwarmEntry(make([]byte, 32), []byte{55})
+	parentKey := make([]byte, 32) // parent key is all zeroes as defined at line 108
+	entry, _ := pot.NewSwarmEntry(parentKey, []byte{55})
 	node.Pin(entry)
 
 	// Add the specified number of child nodes
 	for i := 0; i < childCount; i++ {
-		childRef := make([]byte, 32)
-		childRef[0] = byte(i)
+		childKey := make([]byte, 32)
+		childKey[0] = byte(i)
 		childNode := elements.NewSwarmNode(func(key []byte) elements.Entry { e, _ := pot.NewSwarmEntry(key, make([]byte, 0)); return e })
-		childEntry, _ := pot.NewSwarmEntry(childRef, []byte{byte(i)})
+		childEntry, _ := pot.NewSwarmEntry(childKey, []byte{byte(i)})
 		childNode.Pin(childEntry)
-		childNode.SetReference(childRef)
+
+		// set reference to child node
+		if ls != nil {
+			childData, err := childNode.MarshalBinary()
+			if err != nil {
+				panic(err)
+			}
+			ref, err := ls.Save(context.Background(), childData)
+			if err != nil {
+				panic(err)
+			}
+			childNode.SetReference(ref)
+		} else {
+			childNode.SetReference(childKey)
+		}
+
+		po := elements.PO(parentKey, childKey, 0)
 
 		node.Append(elements.CNode{
-			At:   i,
+			At:   po,
 			Node: childNode,
 		})
 	}
