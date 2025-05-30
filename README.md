@@ -142,6 +142,37 @@ err := index.Iterate(prefix, targetKey, func(entry pot.Entry) (bool, error) {
 ref, err := index.Save(context.Background())
 ```
 
+## Proof System & Blockchain Integration
+
+The POT implementation includes a proof generation and verification system that enables trustless verification of data inclusion without requiring the entire trie structure to be available. It uses Binary Merkle Tree (BMT) proofs on Swarm Chunks (4KB data where the BMT root hash is hashed together with the chunk span).
+
+### Proof Components
+
+- **ForkPathProof**: A complete proof for a path from the root to an entry, containing:
+  - Root reference (hash of the root node)
+  - Target key being proven
+  - Array of fork reference proofs for each node in the path
+  - Entry proof for the final data
+
+- **Proof Verification**: The `blockchain/` directory contains Solidity smart contracts that can verify POT proofs on-chain, enabling blockchain applications to trustlessly verify data from a POT without storing the entire structure.
+
+Example of generating and verifying a proof:
+
+```go
+import "github.com/ethersphere/proximity-order-trie/pkg/proof"
+
+rootNode := index.GetRootNode()
+ls := persister.NewInmemLoadSaver()
+key := make([]byte, 32)
+copy(key[24:], []byte{0xb0, 0xba, 0xf3, 0x77})
+
+// Generate a proof for a key
+proof, err := proof.CreateForkPathProof(rootNode, ls, key)
+
+// On the blockchain side, the proof can be verified using the POTProofVerifier contract
+// See blockchain/README.md for more details on the verification process
+```
+
 ## Customization
 
 You can implement your own Entry types to store custom data, or extend the existing components with additional functionality.
