@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"fmt"
 
+	"github.com/ethersphere/bee/v2/pkg/bmt"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -47,10 +48,7 @@ func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, e
 }
 
 func (ls *InmemLoadSaver) Save(ctx context.Context, data []byte) ([]byte, error) {
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(data)
-	var ref [32]byte
-	copy(ref[:], hasher.Sum(nil))
+	ref := getBMTHash(data)
 	ls.store[ref] = data
 	return ref[:], nil
 }
@@ -85,4 +83,16 @@ func Save(ctx context.Context, ls LoadSaver, n TreeNode) error {
 	}
 	n.SetReference(ref)
 	return nil
+}
+
+func getBMTHash(nodeData []byte) [32]byte {
+	prover := NewBMTHasher()
+	prover.SetHeaderInt64(int64(len(nodeData)))
+	prover.Write(nodeData)
+	return [32]byte(prover.Sum(nil))
+}
+
+// NewBMTHasher creates a new BMT hasher instance
+func NewBMTHasher() *bmt.Hasher {
+	return bmt.NewHasher(sha3.NewLegacyKeccak256)
 }
