@@ -24,8 +24,8 @@ func NewBMTProver() *BMTProver {
 	}
 }
 
-// ForkNodeProof contains the proof data for a fork node
-type ForkNodeProof struct {
+// ForkRefProof contains the proof data for a fork node
+type ForkRefProof struct {
 	// BitVectorProof contains the proof for the bitvector representing the fork structure
 	BitVectorProof *bmt.Proof
 	// ForkReferenceProof contains the proof for the specific fork reference
@@ -36,7 +36,7 @@ type ForkNodeProof struct {
 
 // CreateForkNodeProof generates a proof for a fork node, including both the forkmap bitvector proof
 // and the proof for the specific fork reference that matches the target key.
-func CreateForkNodeProof(parentData, targetKey []byte) (*ForkNodeProof, error) {
+func CreateForkNodeProof(parentData, targetKey []byte) (*ForkRefProof, error) {
 	if len(parentData) == 0 {
 		return nil, fmt.Errorf("empty parent node")
 	}
@@ -76,7 +76,7 @@ func CreateForkNodeProof(parentData, targetKey []byte) (*ForkNodeProof, error) {
 		return nil, fmt.Errorf("specific fork PO %d is not in the bitvector", forkPO)
 	}
 	// count how many forks are before the specificForkPO
-	forkCount := 1
+	forkCount := 0
 	for i := 0; i < forkPO; i++ {
 		if bitVector[i/8]&(1<<(7-i%8)) != 0 {
 			forkCount++
@@ -87,11 +87,12 @@ func CreateForkNodeProof(parentData, targetKey []byte) (*ForkNodeProof, error) {
 	// Use the bitvector as the data to prove
 	prover.SetHeaderInt64(int64(len(parentData)))
 	prover.Write(parentData)
+	_, _ = prover.Hash(nil) // necessary to fill up bmt
 
 	bitVectorProof := prover.Proof(1)
 	forkReferenceProof := prover.Proof(forkCount + 2) // +2 because of the key and the bitvector
 
-	return &ForkNodeProof{
+	return &ForkRefProof{
 		BitVectorProof:     &bitVectorProof,
 		ForkReferenceProof: &forkReferenceProof,
 		ForkPO:             forkPO,
