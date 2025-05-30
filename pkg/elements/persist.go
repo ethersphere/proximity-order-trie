@@ -66,7 +66,7 @@ func (n *SwarmNode) MarshalBinary() ([]byte, error) {
 	bitMap := make([]byte, 32)
 
 	setBitMap := func(n uint8) {
-		bitMap[n/8] |= 1 << (n % 8)
+		bitMap[n/8] |= 1 << ((7 - n) % 8)
 	}
 
 	forRefBytes := make([]byte, 0)
