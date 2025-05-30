@@ -10,8 +10,8 @@ import (
 
 // ForkPathProof represents a path of proofs from a root node to a target node
 type ForkPathProof struct {
-	// Proofs contains all the fork node proofs in the path
-	Proofs []*ForkNodeProof
+	// ForkRefProofs contains all the fork node proofs in the path
+	ForkRefProofs []*ForkRefProof
 	// RootReference is the reference to the root node
 	RootReference []byte
 	// TargetKey is the key we were looking for
@@ -46,7 +46,7 @@ func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetK
 
 	// Initialize the path
 	path := &ForkPathProof{
-		Proofs:        make([]*ForkNodeProof, 0),
+		ForkRefProofs: make([]*ForkRefProof, 0),
 		RootReference: rootRef,
 		TargetKey:     targetKey,
 	}
@@ -75,7 +75,7 @@ func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetK
 			}
 			return nil, fmt.Errorf("failed to create fork node proof: %w", err)
 		}
-		path.Proofs = append(path.Proofs, proof)
+		path.ForkRefProofs = append(path.ForkRefProofs, proof)
 
 		forkRef := proof.ForkReferenceProof.ProveSegment
 
