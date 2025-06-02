@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "./Util/BMTChunk.sol";
+import "./BMTChunk.sol";
 
 /**
  * @title POTProofVerifier
- * @notice Smart contract to verify proofs of entries in a Proximity-Order-Trie
+ * @notice Library to verify proofs of entries in a Proximity-Order-Trie
  */
-contract POTProofVerifier {
+library POTProofVerifier {
     // Maximum depth of the POT trie (256 bits)
     uint16 constant MAX_DEPTH = 256;
     uint8 constant BMT_SEGMENT_SIZE = 32;
@@ -44,7 +44,7 @@ contract POTProofVerifier {
      * @param proof The fork path proof containing all necessary proof segments
      * @dev Reverts if the proof is invalid
      */
-    function assertForkPathProof(ForkPathProof calldata proof) public pure {
+    function assertForkPathProof(ForkPathProof calldata proof) internal pure {
         if (proof.entryProof.bitVectorProof.proofSegments[0] != proof.targetKey) {
             revert("Entry key does not match target key");
         }
