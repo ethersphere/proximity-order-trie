@@ -2,6 +2,9 @@ package proof
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
@@ -87,4 +90,72 @@ func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetK
 	}
 
 	return path, nil
+}
+
+// return hexified JSON values used as smart contract validation parameter
+func (f *ForkPathProof) JSON() string {
+	proofsData := map[string]interface{}{
+		"rootReference": "0x" + hex.EncodeToString(f.RootReference),
+		"entryProof": map[string]interface{}{
+			"entryProof": map[string]interface{}{
+				"proveSegment": "0x" + hex.EncodeToString(f.EntryProof.EntryProof.ProveSegment),
+				"proofSegments": func() []string {
+					segments := make([]string, len(f.EntryProof.EntryProof.ProofSegments))
+					for i, segment := range f.EntryProof.EntryProof.ProofSegments {
+						segments[i] = "0x" + hex.EncodeToString(segment)
+					}
+					return segments
+				}(),
+				"chunkSpan": binary.LittleEndian.Uint64(f.EntryProof.EntryProof.Span),
+			},
+			"bitVectorProof": map[string]interface{}{
+				"proveSegment": "0x" + hex.EncodeToString(f.EntryProof.BitVectorProof.ProveSegment),
+				"proofSegments": func() []string {
+					segments := make([]string, len(f.EntryProof.BitVectorProof.ProofSegments))
+					for i, segment := range f.EntryProof.BitVectorProof.ProofSegments {
+						segments[i] = "0x" + hex.EncodeToString(segment)
+					}
+					return segments
+				}(),
+				"chunkSpan": binary.LittleEndian.Uint64(f.EntryProof.BitVectorProof.Span),
+			},
+		},
+		"forkRefProofs": func() []map[string]interface{} {
+			forkRefProofs := make([]map[string]interface{}, len(f.ForkRefProofs))
+			for i, forkRefProof := range f.ForkRefProofs {
+				forkRefProofs[i] = map[string]interface{}{
+					"forkReferenceProof": map[string]interface{}{
+						"proveSegment": "0x" + hex.EncodeToString(forkRefProof.ForkReferenceProof.ProveSegment),
+						"proofSegments": func() []string {
+							segments := make([]string, len(forkRefProof.ForkReferenceProof.ProofSegments))
+							for j, segment := range forkRefProof.ForkReferenceProof.ProofSegments {
+								segments[j] = "0x" + hex.EncodeToString(segment)
+							}
+							return segments
+						}(),
+						"chunkSpan": binary.LittleEndian.Uint64(forkRefProof.ForkReferenceProof.Span),
+					},
+					"bitVectorProof": map[string]interface{}{
+						"proveSegment": "0x" + hex.EncodeToString(forkRefProof.BitVectorProof.ProveSegment),
+						"proofSegments": func() []string {
+							segments := make([]string, len(forkRefProof.BitVectorProof.ProofSegments))
+							for j, segment := range forkRefProof.BitVectorProof.ProofSegments {
+								segments[j] = "0x" + hex.EncodeToString(segment)
+							}
+							return segments
+						}(),
+						"chunkSpan": binary.LittleEndian.Uint64(forkRefProof.BitVectorProof.Span),
+					},
+				}
+			}
+			return forkRefProofs
+		}(),
+		"targetKey": "0x" + hex.EncodeToString(f.TargetKey),
+	}
+
+	jsonProofsData, err := json.MarshalIndent(proofsData, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(jsonProofsData)
 }
