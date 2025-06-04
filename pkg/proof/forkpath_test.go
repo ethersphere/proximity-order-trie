@@ -1,4 +1,4 @@
-package proof
+package proof_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	pot "github.com/ethersphere/proximity-order-trie"
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
 	"github.com/ethersphere/proximity-order-trie/pkg/persister"
+	"github.com/ethersphere/proximity-order-trie/pkg/proof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,14 +56,14 @@ func TestForkPathProof(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Handle special test cases
 			if tt.name == "nil root node" {
-				_, err := CreateForkPathProof(nil, ls, make([]byte, 32))
+				_, err := proof.CreateForkPathProof(nil, ls, make([]byte, 32))
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
 				return
 			}
 			if tt.name == "nil load saver" {
 				root, _ := createTestTrie(t, ls, 1)
-				_, err := CreateForkPathProof(root, nil, make([]byte, 32))
+				_, err := proof.CreateForkPathProof(root, nil, make([]byte, 32))
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
 				return
@@ -80,7 +81,17 @@ func TestForkPathProof(t *testing.T) {
 				targetKey = keys[2]
 			}
 
-			proof, err := CreateForkPathProof(root, ls, targetKey)
+			proofs, err := proof.CreateForkPathProof(root, ls, targetKey)
+			if err != nil {
+				t.Errorf("CreateForkPathProof() unexpected error: %v", err)
+				return
+			}
+
+			jsonProofsData := proofs.JSON()
+			t.Logf("Proofs: %s", jsonProofsData)
+
+			// print hex value of proofs.RootReference
+			t.Logf("RootReference: %x", proofs.RootReference)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -90,57 +101,57 @@ func TestForkPathProof(t *testing.T) {
 
 			// Validate successful proof
 			require.NoError(t, err)
-			require.NotNil(t, proof)
-			assert.Equal(t, targetKey, proof.TargetKey)
+			require.NotNil(t, proofs)
+			assert.Equal(t, targetKey, proofs.TargetKey)
 
 			// Validate proof structure based on level
-			assert.NotNil(t, proof.RootReference)
+			assert.NotNil(t, proofs.RootReference)
 			switch tt.levels {
 			case 0:
 				// Root level proof should have entry proof but no fork proofs
-				assert.NotNil(t, proof.EntryProof)
-				assert.Len(t, proof.ForkRefProofs, 0)
+				assert.NotNil(t, proofs.EntryProof)
+				assert.Len(t, proofs.ForkRefProofs, 0)
 			case 1:
 				// One level below should have 1 fork proof
-				assert.NotNil(t, proof.EntryProof)
-				assert.Len(t, proof.ForkRefProofs, 1)
+				assert.NotNil(t, proofs.EntryProof)
+				assert.Len(t, proofs.ForkRefProofs, 1)
 
-				hashcalc1, err := Verify(*proof.ForkRefProofs[0].BitVectorProof)
+				hashcalc1, err := proof.Verify(*proofs.ForkRefProofs[0].BitVectorProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
-				hashcalc2, err := Verify(*proof.ForkRefProofs[0].ForkReferenceProof)
+				hashcalc2, err := proof.Verify(*proofs.ForkRefProofs[0].ForkReferenceProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
-				assert.Equal(t, proof.RootReference, hashcalc1)
-				assert.Equal(t, proof.RootReference, hashcalc2)
+				assert.Equal(t, proofs.RootReference, hashcalc1)
+				assert.Equal(t, proofs.RootReference, hashcalc2)
 			case 2:
 				// Two levels below should have 2 fork proofs
-				assert.NotNil(t, proof.EntryProof)
-				assert.Len(t, proof.ForkRefProofs, 2)
-				hashcalc11, err := Verify(*proof.ForkRefProofs[0].BitVectorProof)
+				assert.NotNil(t, proofs.EntryProof)
+				assert.Len(t, proofs.ForkRefProofs, 2)
+				hashcalc11, err := proof.Verify(*proofs.ForkRefProofs[0].BitVectorProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
-				hashcalc12, err := Verify(*proof.ForkRefProofs[0].ForkReferenceProof)
+				hashcalc12, err := proof.Verify(*proofs.ForkRefProofs[0].ForkReferenceProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
-				assert.Equal(t, proof.RootReference, hashcalc11)
-				assert.Equal(t, proof.RootReference, hashcalc12)
+				assert.Equal(t, proofs.RootReference, hashcalc11)
+				assert.Equal(t, proofs.RootReference, hashcalc12)
 
-				hashcalc21, err := Verify(*proof.ForkRefProofs[1].BitVectorProof)
+				hashcalc21, err := proof.Verify(*proofs.ForkRefProofs[1].BitVectorProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
-				hashcalc22, err := Verify(*proof.ForkRefProofs[1].ForkReferenceProof)
+				hashcalc22, err := proof.Verify(*proofs.ForkRefProofs[1].ForkReferenceProof)
 				if err != nil {
 					t.Errorf("Verify() unexpected error: %v", err)
 				}
 				assert.NotEqual(t, hashcalc11, hashcalc21)
-				assert.Equal(t, proof.ForkRefProofs[0].ForkReferenceProof.ProveSegment, hashcalc21)
-				assert.Equal(t, proof.ForkRefProofs[0].ForkReferenceProof.ProveSegment, hashcalc22)
+				assert.Equal(t, proofs.ForkRefProofs[0].ForkReferenceProof.ProveSegment, hashcalc21)
+				assert.Equal(t, proofs.ForkRefProofs[0].ForkReferenceProof.ProveSegment, hashcalc22)
 			}
 		})
 	}
