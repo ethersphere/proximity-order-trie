@@ -6,6 +6,17 @@ import "./BMTChunk.sol";
 /**
  * @title POTProofVerifier
  * @notice Library to verify proofs of entries in a Proximity-Order-Trie
+ * @dev The main function for contract importing the library is `assertForkPathProof`
+ * Its workflow is the following:
+ * Verifies Target Key Consistency: It first checks if the `targetKey` in the provided `proof` matches the key associated with the initial segment of the `entryProof`'s `bitVectorProof`. This ensures the proof is indeed for the claimed target.
+ * Traverses Fork References: It iterates through the `forkRefProofs` array. For each fork:
+ *   - It calculates the Proximity Order (PO) between the current fork's node key and the overall `targetKey`.
+ *   - It verifies that the bit corresponding to this PO is set in the parent node's bitvector, confirming the fork's existence.
+ *   - It determines the `forkRefSegmentIndex` based on the number of preceding forks (ones) in the bitvector.
+ *   - It calls `assertForkRefProof` to validate the BMT proofs for both the bitvector of the current fork node and the actual fork reference (which is the hash of the child node).
+ *   - The `currentNodeHash` is updated to the hash of the child node (the `proveSegment` of the `forkReferenceProof`) for the next iteration or for the final entry proof verification.
+ * Verifies Final Entry: After processing all intermediate forks, it calls `assertEntryProof` using the final `currentNodeHash`.
+ *   - `assertEntryProof` validates the BMT proof for the bitvector of the node containing the entry and the BMT proof for the entry itself. The `entrySegmentIndex` is calculated based on the number of forks in this final node's bitvector.
  */
 library POTProofVerifier {
     // Maximum depth of the POT trie (256 bits)

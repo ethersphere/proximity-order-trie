@@ -27,6 +27,24 @@ The proof system enables verification of entry existence within the POT without 
    - `bitVectorProof`: Proof for the node's bit vector
    - `entryProof`: Proof for the actual entry
 
+### Using the `POTProofVerifier` Library
+
+The `POTProofVerifier.sol` library provides functions to verify proofs related to the Proximity Order Trie. The primary function for verification is `assertForkPathProof`.
+
+#### `assertForkPathProof` Function
+
+The `assertForkPathProof(ForkPathProof calldata proof)` function is the main entry point for verifying an entire path from a known root reference to a specific target key in the POT.
+
+**Revert Conditions:**
+The function will revert with specific error messages if any part of the proof is invalid, such as:
+*   "Entry key does not match target key"
+*   "Fork is not set in the parent's bitvector"
+*   "Invalid bit vector proof" (either in `assertForkRefProof` or `assertEntryProof`)
+*   "Invalid fork reference proof"
+*   "Invalid entry proof"
+
+If the function completes without reverting, it means the provided `ForkPathProof` is valid, and the `targetKey` is confirmed to exist in the POT represented by the initial `rootReference`.
+
 ## Development
 
 Try running some of the following tasks:
@@ -36,5 +54,5 @@ npx hardhat help
 npx hardhat test
 REPORT_GAS=true npx hardhat test
 npx hardhat node
-#npx hardhat ignition deploy ./ignition/modules/POTProofVerifier.ts
+npx hardhat ignition deploy ./ignition/modules/potProofVerifier.ts
 ```
