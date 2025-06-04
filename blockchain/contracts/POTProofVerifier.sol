@@ -60,7 +60,7 @@ library POTProofVerifier {
                 revert("Fork is not set in the parent's bitvector");
             }
             uint16 forkIndex = countOnesInBitVectorUntil(bitVector, calculatedPO); // forks before
-            uint16 forkRefSegmentIndex = 64 + forkIndex * BMT_SEGMENT_SIZE;
+            uint16 forkRefSegmentIndex = 2 + forkIndex;
             assertForkRefProof(currentNodeHash, proof.forkRefProofs[i], forkRefSegmentIndex);
 
             currentNodeHash = proof.forkRefProofs[i].forkReferenceProof.proveSegment;
@@ -95,7 +95,7 @@ library POTProofVerifier {
             proof.bitVectorProof.chunkSpan
         );
         if (bitVectorHash != nodeHash) {
-            revert("Invalid bit vector proof");
+            revert("Invalid bit vector proof at assertForkRefProof");
         }
 
         bytes32 forkRefHash = BMTChunk.chunkAddressFromInclusionProof(
