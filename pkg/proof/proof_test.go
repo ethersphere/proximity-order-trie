@@ -1,4 +1,4 @@
-package proof
+package proof_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	pot "github.com/ethersphere/proximity-order-trie"
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
 	"github.com/ethersphere/proximity-order-trie/pkg/persister"
+	"github.com/ethersphere/proximity-order-trie/pkg/proof"
 )
 
 func TestCreateEntryProof(t *testing.T) {
@@ -53,9 +54,9 @@ func TestCreateEntryProof(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			proof, err := CreateEntryProof(tt.nodeData)
+			proofs, err := proof.CreateEntryProof(tt.nodeData)
 			// Validate that the proofs are properly created
-			prover := NewBMTProver()
+			prover := proof.NewBMTProver()
 			prover.SetHeaderInt64(int64(len(tt.nodeData)))
 			_, _ = prover.Write(tt.nodeData)
 			nodeHash := prover.Sum(nil)
@@ -77,11 +78,11 @@ func TestCreateEntryProof(t *testing.T) {
 			}
 
 			// For valid cases, validate the returned proof structure
-			if proof == nil {
+			if proofs == nil {
 				t.Fatal("CreateEntryProof() returned nil proof for valid data")
 			}
 
-			err = ValidateEntryProof(nodeHash, proof)
+			err = proof.ValidateEntryProof(nodeHash, proofs)
 			if err != nil {
 				t.Errorf("ValidateEntryProof() unexpected error: %v", err)
 			}
