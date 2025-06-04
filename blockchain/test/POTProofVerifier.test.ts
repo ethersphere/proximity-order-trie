@@ -110,33 +110,50 @@ describe("POTProofVerifier", function () {
   });
 
   describe("Proof Verification", function () {
-    it("should revert for invalid proofs", async function () {
-      // Create an invalid fork path proof where the entry key doesn't match the target key
+    // this proof is generated from the pkg/proof/forkpath_test.go 2 level entry case.
+    const proof = require("./forkPathProofSample.json");
 
-      const invalidProof: ForkPathProof = {
-        rootReference: "0x0000000000000000000000000000000000000000000000000000000000000001",
-        targetKey: "0x0000000000000000000000000000000000000000000000000000000000000001",
-        forkRefProofs: [],
-        entryProof: {
-          bitVectorProof: {
-            proofSegments: ["0x0000000000000000000000000000000000000000000000000000000000000002"], // Different from targetKey
-            proveSegment: "0x0000000000000000000000000000000000000000000000000000000000000000",
-            chunkSpan: 32
-          },
-          entryProof: {
-            proofSegments: [],
-            proveSegment: "0x0000000000000000000000000000000000000000000000000000000000000000",
-            chunkSpan: 32
-          }
-        }
-      };
+    it("should accept multi level entry proof", async function () {
+      expect(await potProofVerifierTester.assertForkPathProof(proof)).not.to.be.reverted;
+    })
 
-      await expect(potProofVerifierTester.assertForkPathProof(invalidProof))
-        .to.be.revertedWith("Entry key does not match target key");
+    it("should revert for entry key does not match target key", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      wrongProof.targetKey = "0x0020000000000000000000000000000000000000000000000000000000000000"
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Entry key does not match target key");
+    })
+
+    it("should revert for invalid bit vector proof at assertForkRefProof", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      wrongProof.forkRefProofs[0].bitVectorProof.proveSegment = "0x0000000000000000000000000000000000000000000000000000000000000000"
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Fork is not set in the parent's bitvector");
+    })
+
+    it("should revert for invalid fork reference proof", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      wrongProof.forkRefProofs[0].forkReferenceProof.proveSegment = "0x0000000000000000000000000000000000000000000000000000000000000000"
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Invalid fork reference proof");
+    })
+
+    it("should revert for invalid bit vector proof at assertForkRefProof", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      wrongProof.forkRefProofs[0].bitVectorProof.proveSegment = "0xC000000000000000000000000000000000000000000000000000000000000000"
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Invalid bit vector proof at assertForkRefProof");
+    })
+
+    it("should revert for invalid entry proof", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      wrongProof.entryProof.entryProof.proveSegment = "0x0000000000000000000000000000000000000000000000000000000000000000"
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Invalid entry proof");
+    })
+
+    it("should revert for invalid bit vector proof at assertEntryProof", async function () {
+      const wrongProof = JSON.parse(JSON.stringify(proof));
+      // Corrupt the proveSegment of the entryProof's bitVectorProof
+      // This should cause the bitVectorHash in assertEntryProof to mismatch the currentNodeHash
+      wrongProof.entryProof.bitVectorProof.proveSegment = "0x1111111111111111111111111111111111111111111111111111111111111111"; // A clearly different hash
+      await expect(potProofVerifierTester.assertForkPathProof(wrongProof)).to.be.revertedWith("Invalid bit vector proof at assertEntryProof");
     });
 
-    // More proof verification tests would be added here with valid proofs
-    // These would require generating valid BMT inclusion proofs, which is complex
-    // and would typically be done using actual proof generation code from the main codebase
   });
 });
