@@ -1,4 +1,8 @@
+[![CI](https://github.com/ethersphere/proximity-order-trie/actions/workflows/ci.yml/badge.svg)](https://github.com/ethersphere/proximity-order-trie/actions/workflows/ci.yml)
+
 # Proximity Order Trie (POT)
+
+_The go implementation is based on @zelig's [POT implementation](https://github.com/ethersphere/bee/tree/pottery)_
 
 The Go implementation of the Proximity Order Trie (POT) data structure, which is a specialized trie that organizes nodes based on their proximity order (bit-level similarity) to key values.
 
