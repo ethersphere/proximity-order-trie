@@ -87,12 +87,6 @@ func TestForkPathProof(t *testing.T) {
 				return
 			}
 
-			jsonProofsData := proofs.JSON()
-			t.Logf("Proofs: %s", jsonProofsData)
-
-			// print hex value of proofs.RootReference
-			t.Logf("RootReference: %x", proofs.RootReference)
-
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
