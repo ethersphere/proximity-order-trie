@@ -1,4 +1,4 @@
-[![CI](https://github.com/ethersphere/proximity-order-trie/actions/workflows/ci.yml/badge.svg)](https://github.com/ethersphere/proximity-order-trie/actions/workflows/ci.yml)
+[![Tests](https://github.com/ethersphere/proximity-order-trie/actions/workflows/tests.yml/badge.svg)](https://github.com/ethersphere/proximity-order-trie/actions/workflows/tests.yml)
 
 # Proximity Order Trie (POT)
 
