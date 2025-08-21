@@ -48,7 +48,10 @@ func Whack(acc Node, n, m CNode) {
 
 // Update
 func Update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
-	u := update(acc, cn, k, eqf, mode)
+	u, err := update(acc, cn, k, eqf, mode)
+	if err != nil {
+		return nil, err
+	}
 	if err := mode.Pack(u); err != nil {
 		return nil, err
 	}
@@ -56,7 +59,7 @@ func Update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 }
 
 // what `eqf` does(?)
-func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) Node {
+func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
 	/**
 	1. **Empty node case**: If target node is empty, simply pin the new entry
 	2. **Exact match case**: Update the entry if needed and use Whack to rebuild
@@ -67,59 +70,66 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) Node
 	if Empty(cn.Node) {
 		e := eqf(nil)
 		if e == nil {
-			return nil
+			return nil, nil
 		}
 		acc.Pin(e)
-		return acc
+		return acc, nil
 	}
-	cm, match := FindNext(cn, k, mode)
+	cm, match, err := FindNext(cn, k, mode)
+	if err != nil {
+		return nil, err
+	}
 	if match {
 		orig := cn.Node.Entry()
 		entry := eqf(orig)
 		if entry == nil {
-			return Pull(acc, cn, mode)
+			node := Pull(acc, cn, mode)
+			return node, nil
 		}
 		if entry.Equal(orig) {
-			return nil
+			return nil, nil
 		}
 		n := mode.New()
 		n.Pin(entry)
 		Whack(acc, cn, NewAt(mode.Depth(), n))
-		return acc
+		return acc, nil
 	}
 	if Empty(cm.Node) {
 		entry := eqf(nil)
 		if entry == nil {
-			return nil
+			return nil, nil
 		}
 		n := mode.New()
 		n.Pin(entry)
 		Whirl(acc, cn, NewAt(cm.At, n))
-		return acc
+		return acc, nil
 	}
 	if cm.At == 0 {
-		res := update(acc, cm, k, eqf, mode)
+		res, err := update(acc, cm, k, eqf, mode)
+		if err != nil {
+			return nil, err
+		}
 		cm := NewAt(-1, res)
 		if cm.Node == nil {
 			Wedge(acc, cn, NewAt(0, cm.Node))
-			return acc
+			return acc, nil
 		}
 		if mode.Down(cm) {
 			acc := mode.New()
 			Wedge(acc, cn, cm)
-			return acc
+			return acc, nil
 		}
 		n := mode.New()
 		Whack(n, cm, cn)
-		return n
+		return n, nil
 	}
 	if mode.Down(cm) {
-		res := update(mode.New(), cm, k, eqf, mode)
-		if res == nil {
-			return nil
+		res, err := update(mode.New(), cm, k, eqf, mode)
+		if err != nil {
+			return nil, err
 		}
 		Wedge(acc, cn, NewAt(cm.At, res))
-		return acc
+		return acc, nil
 	}
 	Whirl(acc, cn, cm)
 	return update(acc, cm.Next(), k, eqf, mode)
