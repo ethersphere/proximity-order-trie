@@ -9,7 +9,7 @@ import (
 	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
 
-var _ KeyValueStore = (*swarmKvs)(nil)
+var _ KeyValueStore = (*SwarmKvs)(nil)
 
 var (
 	ErrNotFound = errors.New("not found")
@@ -25,12 +25,12 @@ type KeyValueStore interface {
 	Save(ctx context.Context) ([]byte, error)
 }
 
-type swarmKvs struct {
+type SwarmKvs struct {
 	idx *Index
 }
 
 // NewSwarmKvs creates a new key-value store with pot as the underlying storage.
-func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
+func NewSwarmKvs(ls persister.LoadSaver) (*SwarmKvs, error) {
 	basePotMode := elements.NewSingleOrder(256)
 	mode := elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &SwarmEntry{key: key} })
 	idx, err := New(mode)
@@ -38,13 +38,13 @@ func NewSwarmKvs(ls persister.LoadSaver) (*swarmKvs, error) {
 		return nil, fmt.Errorf("failed to create pot: %w", err)
 	}
 
-	return &swarmKvs{
+	return &SwarmKvs{
 		idx: idx,
 	}, nil
 }
 
 // NewSwarmKvsReference loads a key-value store from the given root hash with pot as the underlying storage.
-func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*swarmKvs, error) {
+func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*SwarmKvs, error) {
 	basePotMode := elements.NewSingleOrder(256)
 	mode := elements.NewSwarmPotReference(basePotMode, ls, ref, func(key []byte) elements.Entry { return &SwarmEntry{key: key} })
 	idx, err := NewReference(mode, ref)
@@ -52,13 +52,13 @@ func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*swarmKvs, error)
 		return nil, fmt.Errorf("failed to create pot reference: %w", err)
 	}
 
-	return &swarmKvs{
+	return &SwarmKvs{
 		idx: idx,
 	}, nil
 }
 
 // Get retrieves the value associated with the given key.
-func (ps *swarmKvs) Get(ctx context.Context, key []byte) ([]byte, error) {
+func (ps *SwarmKvs) Get(ctx context.Context, key []byte) ([]byte, error) {
 	entry, err := ps.idx.Find(ctx, key)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (ps *swarmKvs) Get(ctx context.Context, key []byte) ([]byte, error) {
 }
 
 // Put stores the given key-value pair in the store.
-func (ps *swarmKvs) Put(ctx context.Context, key []byte, value []byte) error {
+func (ps *SwarmKvs) Put(ctx context.Context, key []byte, value []byte) error {
 	entry, err := NewSwarmEntry(key, value)
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func (ps *swarmKvs) Put(ctx context.Context, key []byte, value []byte) error {
 }
 
 // Save saves key-value pair to the underlying storage and returns the reference.
-func (ps *swarmKvs) Save(ctx context.Context) ([]byte, error) {
+func (ps *SwarmKvs) Save(ctx context.Context) ([]byte, error) {
 	ref, err := ps.idx.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store pot %w", err)

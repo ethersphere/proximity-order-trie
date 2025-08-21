@@ -20,7 +20,7 @@ jobs:
         go-version: '1.24'
 
     - name: Run Go tests
-      run: go test -v ./pkg/...
+      run: go test -v -tags="!swarm-persister" ./pkg/...
 
   solidity-tests:
     name: Solidity Tests
@@ -42,3 +42,56 @@ jobs:
 
     - name: Run Hardhat tests
       run: npx hardhat test
+
+  swarm-integration-tests:
+    name: Swarm Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install fdp-play
+      run: |
+        npm install -g @fairdatasociety/fdp-play
+        fdp-play --version
+
+    - name: Install swarm-cli
+      run: |
+        npm install --global @ethersphere/swarm-cli
+        swarm-cli --version
+
+    - name: Start fdp-play environment
+      run: |
+        fdp-play start --detach
+
+    - name: Buy postage batch
+      run: |
+        BATCH_ID=$(swarm-cli stamp buy --depth 20 --amount 1b --quiet)
+        echo "BEE_BATCH_ID=$BATCH_ID" >> $GITHUB_ENV
+        echo "Postage Batch ID: $BATCH_ID"
+
+    - name: Run swarm integration tests
+      run: |
+        export BEE_API_URL="http://localhost:1633"
+        
+        go test -v -tags=swarm_integration ./pkg/persister/...
+
+    - name: Show fdp-play logs on failure
+      if: failure()
+      run: |
+        docker container logs --tail 100 fdp-play-queen
+
+    - name: Stop fdp-play environment
+      if: always()
+      run: |
+        fdp-play stop
