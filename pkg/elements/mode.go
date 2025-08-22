@@ -9,15 +9,15 @@ import (
 )
 
 type Mode interface {
-	Depth() int                                           // maximum bit length of key
-	New() Node                                            // constructor
-	Pack(Node) error                                      // mode specific saving of a node
-	Unpack(Node) error                                    // mode specific loading of a node
-	Down(CNode) bool                                      // dictates insertion policy
-	Up() func(CNode) bool                                 // dictates which node/entry to promote after deletion
-	Load(context.Context, []byte) (Node, bool, error)     // loads the pot
-	Save(context.Context) ([]byte, error)                 // saves the pot
-	Update(Node, []byte, func(Entry) Entry) (Node, error) // mode specific update
+	Depth() int                                                            // maximum bit length of key
+	New() Node                                                             // constructor
+	Pack(Node) error                                                       // mode specific saving of a node
+	Unpack(context.Context, Node) error                                    // mode specific loading of a node
+	Down(CNode) bool                                                       // dictates insertion policy
+	Up() func(CNode) bool                                                  // dictates which node/entry to promote after deletion
+	Load(context.Context, []byte) (Node, bool, error)                      // loads the pot
+	Save(context.Context) ([]byte, error)                                  // saves the pot
+	Update(context.Context, Node, []byte, func(Entry) Entry) (Node, error) // mode specific update
 }
 
 type SingleOrder struct {
@@ -36,7 +36,7 @@ func (SingleOrder) Pack(n Node) error {
 }
 
 // Unpack NOOP
-func (SingleOrder) Unpack(n Node) error {
+func (SingleOrder) Unpack(ctx context.Context, n Node) error {
 	return nil
 }
 
@@ -71,8 +71,8 @@ func (so SingleOrder) Load(context.Context, []byte) (Node, bool, error) {
 }
 
 // Update is mode specific pot update function - NOOP just proxies to pkg wide default
-func (so SingleOrder) Update(root Node, k []byte, f func(Entry) Entry) (Node, error) {
-	return Update(so.New(), NewAt(0, root), k, f, so)
+func (so SingleOrder) Update(ctx context.Context, root Node, k []byte, f func(Entry) Entry) (Node, error) {
+	return Update(ctx, so.New(), NewAt(0, root), k, f, so)
 }
 
 // Mode for Swarm persisted pots
@@ -124,8 +124,8 @@ func (pm *SwarmPot) Save(ctx context.Context) ([]byte, error) {
 }
 
 // Update builds on the generic Update
-func (pm *SwarmPot) Update(root Node, k []byte, f func(Entry) Entry) (Node, error) {
-	update, err := Update(pm.New(), NewAt(0, root), k, f, pm)
+func (pm *SwarmPot) Update(ctx context.Context, root Node, k []byte, f func(Entry) Entry) (Node, error) {
+	update, err := Update(ctx, pm.New(), NewAt(0, root), k, f, pm)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (pm *SwarmPot) Pack(n Node) error {
 
 // TODO: FindNext & itarte calls Unpack causing the pot node to be loaded.
 // Unpack loads and deserialises node into memory
-func (pm *SwarmPot) Unpack(n Node) error {
+func (pm *SwarmPot) Unpack(ctx context.Context, n Node) error {
 	if n == nil {
 		return nil
 	}
@@ -153,7 +153,7 @@ func (pm *SwarmPot) Unpack(n Node) error {
 		return nil
 	}
 	dn.MemNode = &MemNode{}
-	return persister.Load(context.Background(), pm.ls, dn)
+	return persister.Load(ctx, pm.ls, dn)
 }
 
 // New constructs a new node

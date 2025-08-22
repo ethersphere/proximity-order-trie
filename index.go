@@ -93,7 +93,7 @@ func (idx *Index) Update(ctx context.Context, k []byte, f func(elements.Entry) e
 	case root = <-idx.write:
 	}
 
-	update, err := idx.mode.Update(root, k, f)
+	update, err := idx.mode.Update(ctx, root, k, f)
 	if err != nil {
 		return err
 	}
@@ -116,13 +116,13 @@ func (idx *Index) Find(ctx context.Context, k []byte) (elements.Entry, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case root := <-idx.read:
-		return elements.Find(root, k, idx.mode)
+		return elements.Find(ctx, root, k, idx.mode)
 	}
 }
 
 // Iterate wraps the underlying pot's iterator
-func (idx *Index) Iterate(p, k []byte, f func(elements.Entry) (stop bool, err error)) error {
-	return elements.Iterate(elements.NewAt(0, <-idx.read), p, k, idx.mode, f)
+func (idx *Index) Iterate(ctx context.Context, p, k []byte, f func(elements.Entry) (stop bool, err error)) error {
+	return elements.Iterate(ctx, elements.NewAt(0, <-idx.read), p, k, idx.mode, f)
 }
 
 // Size returns the size (number of entries) of the pot
