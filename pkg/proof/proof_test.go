@@ -31,12 +31,12 @@ func TestCreateEntryProof(t *testing.T) {
 		},
 		{
 			name:     "valid node data without children",
-			nodeData: createValidNodeData(0, nil),
+			nodeData: createValidNodeData(t, 0, nil),
 			wantErr:  false,
 		},
 		{
 			name:     "valid node data with 3 children",
-			nodeData: createValidNodeData(3, nil),
+			nodeData: createValidNodeData(t, 3, nil),
 			wantErr:  false,
 		},
 	}
@@ -49,7 +49,7 @@ func TestCreateEntryProof(t *testing.T) {
 		errorContains string
 	}{
 		name:     "valid node data with many children",
-		nodeData: createValidNodeData(10, nil), // Create a node with 10 children
+		nodeData: createValidNodeData(t, 10, nil), // Create a node with 10 children
 	})
 
 	for _, tt := range tests {
@@ -105,7 +105,8 @@ func createNodeWithZeroEntrySize() []byte {
 }
 
 // createValidNodeData creates valid node data with an entry and the specified number of child nodes
-func createValidNodeData(childCount int, ls persister.LoadSaver) []byte {
+func createValidNodeData(t *testing.T, childCount int, ls persister.LoadSaver) []byte {
+	t.Helper()
 	node := elements.NewSwarmNode(func(key []byte) elements.Entry { e, _ := pot.NewSwarmEntry(key, make([]byte, 0)); return e })
 	parentKey := make([]byte, 32) // parent key is all zeroes as defined at line 108
 	entry, _ := pot.NewSwarmEntry(parentKey, []byte{55})
@@ -123,11 +124,11 @@ func createValidNodeData(childCount int, ls persister.LoadSaver) []byte {
 		if ls != nil {
 			childData, err := childNode.MarshalBinary()
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 			ref, err := ls.Save(context.Background(), childData)
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 			childNode.SetReference(ref)
 		} else {
@@ -144,7 +145,7 @@ func createValidNodeData(childCount int, ls persister.LoadSaver) []byte {
 
 	data, err := node.MarshalBinary()
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	return data
