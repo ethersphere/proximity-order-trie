@@ -107,7 +107,10 @@ func find(n CNode, k []byte, mode Mode) (Entry, error) {
 	if Empty(n.Node) {
 		return nil, ErrNotFound
 	}
-	m, match := FindNext(n, k, mode)
+	m, match, err := FindNext(n, k, mode)
+	if err != nil {
+		return nil, err
+	}
 	if match {
 		return n.Node.Entry(), nil
 	}
@@ -136,7 +139,7 @@ func iterate(n CNode, k []byte, at int, mode Mode, f func(Entry) (bool, error)) 
 	po := Compare(n.Node, k, n.At+1)
 	cn = n.Node.Fork(po)
 	if err := mode.Unpack(cn.Node); err != nil {
-		panic(err.Error())
+		return true, err
 	}
 	forks := append(Slice(n.Node, n.At+1, cn.At), NewAt(cn.At, n.Node), cn)
 	for i := len(forks) - 1; !stop && err == nil && i >= 0; i-- {
@@ -160,7 +163,10 @@ func findNode(n CNode, k []byte, mode Mode) (CNode, error) {
 	if Empty(n.Node) {
 		return CNode{}, ErrNotFound
 	}
-	m, ok := FindNext(n, k, mode)
+	m, ok, err := FindNext(n, k, mode)
+	if err != nil {
+		return CNode{}, err
+	}
 	if ok {
 		return NewAt(8*len(k), n.Node), nil
 	}
@@ -168,16 +174,16 @@ func findNode(n CNode, k []byte, mode Mode) (CNode, error) {
 }
 
 // FindNext returns the fork on a node that matches the key bytes
-func FindNext(n CNode, k []byte, mode Mode) (CNode, bool) {
+func FindNext(n CNode, k []byte, mode Mode) (CNode, bool, error) {
 	po := Compare(n.Node, k, n.At)
 	if po < mode.Depth() && po < 8*len(k) {
 		cn := n.Node.Fork(po)
 		if err := mode.Unpack(cn.Node); err != nil {
-			panic(err.Error())
+			return CNode{}, false, err
 		}
-		return cn, false
+		return cn, false, nil
 	}
-	return NewAt(mode.Depth(), nil), true
+	return NewAt(mode.Depth(), nil), true, nil
 }
 
 // FindFork iterates through the forks on a node and returns the fork

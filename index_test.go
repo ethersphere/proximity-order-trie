@@ -58,8 +58,8 @@ func TestUpdateCorrectness(t *testing.T) {
 	}
 	defer idx.Close()
 
-	want := newDetMockEntry(0)
-	want2 := newDetMockEntry(1)
+	want := newDetMockEntry(t, 0)
+	want2 := newDetMockEntry(t, 1)
 	ctx := context.Background()
 	t.Run("not found on empty index", func(t *testing.T) {
 		checkNotFound(t, ctx, idx, want)
@@ -124,7 +124,7 @@ func TestEdgeCasesCorrectness(t *testing.T) {
 		ints := []int{0, 1, 2}
 		entries := make([]*mockEntry, 3)
 		for i, j := range ints {
-			entry := newDetMockEntry(j)
+			entry := newDetMockEntry(t, j)
 			idx.Add(ctx, entry)
 			entries[i] = entry
 		}
@@ -142,7 +142,7 @@ func TestEdgeCasesCorrectness(t *testing.T) {
 		ints := []int{5, 4, 7, 8}
 		entries := make([]*mockEntry, 4)
 		for i, j := range ints {
-			entry := newDetMockEntry(j)
+			entry := newDetMockEntry(t, j)
 			idx.Add(ctx, entry)
 			entries[i] = entry
 		}
@@ -161,7 +161,7 @@ func TestEdgeCasesCorrectness(t *testing.T) {
 		ints := []int{3, 0, 2, 1}
 		entries := make([]*mockEntry, 4)
 		for i, j := range ints {
-			entry := newDetMockEntry(j)
+			entry := newDetMockEntry(t, j)
 			idx.Add(ctx, entry)
 			entries[i] = entry
 		}
@@ -182,7 +182,7 @@ func TestEdgeCasesCorrectness(t *testing.T) {
 		ints := []int{6, 7}
 		entries := make([]*mockEntry, 2)
 		for i, j := range ints {
-			entry := newDetMockEntry(j)
+			entry := newDetMockEntry(t, j)
 			idx.Add(ctx, entry)
 			entries[i] = entry
 		}
@@ -274,12 +274,12 @@ func TestSize(t *testing.T) {
 				if size != i {
 					t.Fatalf("incorrect number of items. want %d, got %d", i, size)
 				}
-				idx.Add(ctx, newDetMockEntry(i))
+				idx.Add(ctx, newDetMockEntry(t, i))
 			}
 		})
 		t.Run("update", func(t *testing.T) {
 			for i := 0; i < count; i++ {
-				idx.Add(ctx, &mockEntry{newDetMockEntry(i).key, 10000})
+				idx.Add(ctx, &mockEntry{newDetMockEntry(t, i).key, 10000})
 				size := idx.Size()
 				if size != count {
 					t.Fatalf("incorrect number of items. want %d, got %d", count, size)
@@ -288,7 +288,7 @@ func TestSize(t *testing.T) {
 		})
 		t.Run("delete", func(t *testing.T) {
 			for i := 0; i < count; i++ {
-				idx.Delete(ctx, newDetMockEntry(i).key)
+				idx.Delete(ctx, newDetMockEntry(t, i).key)
 				size := idx.Size()
 				if size != count-i-1 {
 					t.Fatalf("incorrect number of items. want %d, got %d", count-i-1, size)
@@ -330,7 +330,7 @@ func TestPersistence(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	for i := 0; i < count; i++ {
-		idx.Add(ctx, newDetMockEntry(i))
+		idx.Add(ctx, newDetMockEntry(t, i))
 	}
 	idx.Close()
 
@@ -343,10 +343,10 @@ func TestPersistence(t *testing.T) {
 	defer idx.Close()
 
 	for i := 0; i < count+10; i++ {
-		idx.Add(ctx, newDetMockEntry(i))
+		idx.Add(ctx, newDetMockEntry(t, i))
 	}
 	for i := 0; i < count+10; i++ {
-		checkFound(t, ctx, idx, newDetMockEntry(i))
+		checkFound(t, ctx, idx, newDetMockEntry(t, i))
 	}
 }
 
@@ -365,7 +365,7 @@ func TestConcurrency(t *testing.T) {
 				<-start
 				for i := 0; i < count; i++ {
 					j := i*workers + k
-					e := newDetMockEntry(j)
+					e := newDetMockEntry(t, j)
 					idx.Add(ctx, e)
 					_, err := idx.Find(ctx, e.key)
 					if err != nil {
@@ -391,7 +391,7 @@ func TestConcurrency(t *testing.T) {
 					case <-ectx.Done():
 						return ectx.Err()
 					}
-					e := newDetMockEntry(j)
+					e := newDetMockEntry(t, j)
 					idx.Delete(ctx, e.Key())
 					_, err := idx.Find(ctx, e.key)
 					if !errors.Is(err, elements.ErrNotFound) {
@@ -408,7 +408,7 @@ func TestConcurrency(t *testing.T) {
 		close(c)
 		entered := make(map[int]struct{})
 		for i := range c {
-			_, err := idx.Find(ctx, newDetMockEntry(i).key)
+			_, err := idx.Find(ctx, newDetMockEntry(t, i).key)
 			if err != nil {
 				t.Fatalf("find %d: expected found. got %v", i, err)
 			}
@@ -418,7 +418,7 @@ func TestConcurrency(t *testing.T) {
 			if _, found := entered[i]; found {
 				continue
 			}
-			_, err := idx.Find(ctx, newDetMockEntry(i).key)
+			_, err := idx.Find(ctx, newDetMockEntry(t, i).key)
 			if !errors.Is(err, elements.ErrNotFound) {
 				t.Fatalf("find %d: expected %v. got %v", i, elements.ErrNotFound, err)
 			}
@@ -445,12 +445,13 @@ func TestConcurrency(t *testing.T) {
 	})
 }
 
-func newDetMockEntry(n int) *mockEntry {
+func newDetMockEntry(t *testing.T, n int) *mockEntry {
+	t.Helper()
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, uint32(n))
 	hasher := sha256.New()
 	if _, err := hasher.Write(buf); err != nil {
-		panic(err.Error())
+		t.Fatal(err)
 	}
 	return &mockEntry{hasher.Sum(nil), int(n)}
 }
