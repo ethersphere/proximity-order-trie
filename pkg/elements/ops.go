@@ -1,5 +1,7 @@
 package elements
 
+import "context"
+
 const MaxDepth = 256
 
 /*
@@ -47,19 +49,19 @@ func Whack(acc Node, n, m CNode) {
 }
 
 // Update
-func Update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
-	u, err := update(acc, cn, k, eqf, mode)
+func Update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
+	u, err := update(ctx, acc, cn, k, eqf, mode)
 	if err != nil {
 		return nil, err
 	}
-	if err := mode.Pack(u); err != nil {
+	if err := mode.Pack(ctx, u); err != nil {
 		return nil, err
 	}
 	return u, nil
 }
 
 // what `eqf` does(?)
-func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
+func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
 	/**
 	1. **Empty node case**: If target node is empty, simply pin the new entry
 	2. **Exact match case**: Update the entry if needed and use Whack to rebuild
@@ -75,7 +77,7 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 		acc.Pin(e)
 		return acc, nil
 	}
-	cm, match, err := FindNext(cn, k, mode)
+	cm, match, err := FindNext(ctx, cn, k, mode)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +107,7 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 		return acc, nil
 	}
 	if cm.At == 0 {
-		res, err := update(acc, cm, k, eqf, mode)
+		res, err := update(ctx, acc, cm, k, eqf, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +126,7 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 		return n, nil
 	}
 	if mode.Down(cm) {
-		res, err := update(mode.New(), cm, k, eqf, mode)
+		res, err := update(ctx, mode.New(), cm, k, eqf, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +134,7 @@ func update(acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Nod
 		return acc, nil
 	}
 	Whirl(acc, cn, cm)
-	return update(acc, cm.Next(), k, eqf, mode)
+	return update(ctx, acc, cm.Next(), k, eqf, mode)
 }
 
 // Pull handles node removal and restructuring of the trie.
