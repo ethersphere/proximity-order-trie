@@ -25,7 +25,7 @@ type ForkPathProof struct {
 
 // CreateForkPathProof generates a path of proofs from the root node to the target key.
 // It iteratively loads nodes and creates proofs until it reaches the target key or encounters an error.
-func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetKey []byte) (*ForkPathProof, error) {
+func CreateForkPathProof(ctx context.Context, rootNode elements.Node, ls persister.LoadSaver, targetKey []byte) (*ForkPathProof, error) {
 	if rootNode == nil {
 		return nil, fmt.Errorf("root node is nil")
 	}
@@ -55,7 +55,6 @@ func CreateForkPathProof(rootNode elements.Node, ls persister.LoadSaver, targetK
 	}
 
 	// Load the initial node data
-	ctx := context.Background()
 	currentNodeData, err := swarmNode.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root node: %w", err)
