@@ -11,8 +11,8 @@ import (
 type Mode interface {
 	Depth() int                                                            // maximum bit length of key
 	New() Node                                                             // constructor
-	Pack(Node) error                                                       // mode specific saving of a node
-	Unpack(context.Context, Node) error                                    // mode specific loading of a node
+	Pack(ctx context.Context, n Node) error                                // mode specific saving of a node
+	Unpack(ctx context.Context, n Node) error                              // mode specific loading of a node
 	Down(CNode) bool                                                       // dictates insertion policy
 	Up() func(CNode) bool                                                  // dictates which node/entry to promote after deletion
 	Load(context.Context, []byte) (Node, bool, error)                      // loads the pot
@@ -31,7 +31,7 @@ func NewSingleOrder(d int) *SingleOrder {
 }
 
 // Pack NOOP
-func (SingleOrder) Pack(n Node) error {
+func (SingleOrder) Pack(ctx context.Context, n Node) error {
 	return nil
 }
 
@@ -135,14 +135,13 @@ func (pm *SwarmPot) Update(ctx context.Context, root Node, k []byte, f func(Entr
 
 // Pack serialises and saves the object
 // once a new node is saved it can be delinked as node from memory
-func (pm *SwarmPot) Pack(n Node) error {
+func (pm *SwarmPot) Pack(ctx context.Context, n Node) error {
 	if n == nil {
 		return nil // nothing to save
 	}
-	return persister.Save(context.Background(), pm.ls, n.(*SwarmNode))
+	return persister.Save(ctx, pm.ls, n.(*SwarmNode))
 }
 
-// TODO: FindNext & itarte calls Unpack causing the pot node to be loaded.
 // Unpack loads and deserialises node into memory
 func (pm *SwarmPot) Unpack(ctx context.Context, n Node) error {
 	if n == nil {

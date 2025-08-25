@@ -32,7 +32,7 @@ func New(mode elements.Mode) (*Index, error) {
 }
 
 // NewReference constructs a new mutable pot from a reference
-func NewReference(mode elements.Mode, ref []byte) (*Index, error) {
+func NewReference(ctx context.Context, mode elements.Mode, ref []byte) (*Index, error) {
 	idx := &Index{
 		mode:  mode,
 		read:  make(chan elements.Node),
@@ -41,7 +41,7 @@ func NewReference(mode elements.Mode, ref []byte) (*Index, error) {
 		quit:  make(chan struct{}),
 	}
 
-	root, loaded, err := idx.mode.Load(context.TODO(), ref)
+	root, loaded, err := idx.mode.Load(ctx, ref)
 	if err != nil {
 		return nil, err
 	}

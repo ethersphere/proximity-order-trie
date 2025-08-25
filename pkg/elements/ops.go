@@ -54,7 +54,7 @@ func Update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 	if err != nil {
 		return nil, err
 	}
-	if err := mode.Pack(u); err != nil {
+	if err := mode.Pack(ctx, u); err != nil {
 		return nil, err
 	}
 	return u, nil

@@ -44,10 +44,10 @@ func NewSwarmKvs(ls persister.LoadSaver) (*SwarmKvs, error) {
 }
 
 // NewSwarmKvsReference loads a key-value store from the given root hash with pot as the underlying storage.
-func NewSwarmKvsReference(ls persister.LoadSaver, ref []byte) (*SwarmKvs, error) {
+func NewSwarmKvsReference(ctx context.Context, ls persister.LoadSaver, ref []byte) (*SwarmKvs, error) {
 	basePotMode := elements.NewSingleOrder(256)
 	mode := elements.NewSwarmPotReference(basePotMode, ls, ref, func(key []byte) elements.Entry { return &SwarmEntry{key: key} })
-	idx, err := NewReference(mode, ref)
+	idx, err := NewReference(ctx, mode, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pot reference: %w", err)
 	}
