@@ -59,7 +59,7 @@ func TestPotKvs_Save(t *testing.T) {
 		ref, err := s1.Save(ctx)
 		assert.NoError(t, err)
 
-		s2, err := pot.NewSwarmKvsReference(ls, ref)
+		s2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
 		assert.NoError(t, err)
 
 		val, err := s2.Get(ctx, key1)
@@ -76,7 +76,7 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.NoError(t, err)
 
 		// New KVS
-		kvs2, err := pot.NewSwarmKvsReference(ls, ref)
+		kvs2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
 		assert.NoError(t, err)
 		err = kvs2.Put(ctx, key2, val2)
 		assert.NoError(t, err)

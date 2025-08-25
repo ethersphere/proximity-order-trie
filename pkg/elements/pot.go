@@ -1,6 +1,7 @@
 package elements
 
 import (
+	"context"
 	"encoding"
 	"encoding/binary"
 	"errors"
@@ -99,36 +100,36 @@ func Append(b, n Node, from, to int) {
 }
 
 // Find returns the entry of a key
-func Find(n Node, k []byte, mode Mode) (Entry, error) {
-	return find(NewAt(0, n), k, mode)
+func Find(ctx context.Context, n Node, k []byte, mode Mode) (Entry, error) {
+	return find(ctx, NewAt(0, n), k, mode)
 }
 
-func find(n CNode, k []byte, mode Mode) (Entry, error) {
+func find(ctx context.Context, n CNode, k []byte, mode Mode) (Entry, error) {
 	if Empty(n.Node) {
 		return nil, ErrNotFound
 	}
-	m, match, err := FindNext(n, k, mode)
+	m, match, err := FindNext(ctx, n, k, mode)
 	if err != nil {
 		return nil, err
 	}
 	if match {
 		return n.Node.Entry(), nil
 	}
-	return find(m, k, mode)
+	return find(ctx, m, k, mode)
 }
 
 // Iterate is an iterator that walks all the entries subsumed under the given CNode
 // in ascending order of distance from a given key
-func Iterate(n CNode, p, k []byte, mode Mode, f func(Entry) (bool, error)) error {
-	m, _ := findNode(n, p, mode)
+func Iterate(ctx context.Context, n CNode, p, k []byte, mode Mode, f func(Entry) (bool, error)) error {
+	m, _ := findNode(ctx, n, p, mode)
 	if Empty(m.Node) {
 		return nil
 	}
-	_, err := iterate(m, k, m.At, mode, f)
+	_, err := iterate(ctx, m, k, m.At, mode, f)
 	return err
 }
 
-func iterate(n CNode, k []byte, at int, mode Mode, f func(Entry) (bool, error)) (stop bool, err error) {
+func iterate(ctx context.Context, n CNode, k []byte, at int, mode Mode, f func(Entry) (bool, error)) (stop bool, err error) {
 	if Empty(n.Node) {
 		return false, nil
 	}
@@ -138,12 +139,12 @@ func iterate(n CNode, k []byte, at int, mode Mode, f func(Entry) (bool, error)) 
 	var cn CNode
 	po := Compare(n.Node, k, n.At+1)
 	cn = n.Node.Fork(po)
-	if err := mode.Unpack(cn.Node); err != nil {
+	if err := mode.Unpack(ctx, cn.Node); err != nil {
 		return true, err
 	}
 	forks := append(Slice(n.Node, n.At+1, cn.At), NewAt(cn.At, n.Node), cn)
 	for i := len(forks) - 1; !stop && err == nil && i >= 0; i-- {
-		stop, err = iterate(forks[i], k, at, mode, f)
+		stop, err = iterate(ctx, forks[i], k, at, mode, f)
 	}
 	return stop, err
 }
@@ -159,26 +160,26 @@ func Slice(n Node, from, to int) (forks []CNode) {
 	return forks
 }
 
-func findNode(n CNode, k []byte, mode Mode) (CNode, error) {
+func findNode(ctx context.Context, n CNode, k []byte, mode Mode) (CNode, error) {
 	if Empty(n.Node) {
 		return CNode{}, ErrNotFound
 	}
-	m, ok, err := FindNext(n, k, mode)
+	m, ok, err := FindNext(ctx, n, k, mode)
 	if err != nil {
 		return CNode{}, err
 	}
 	if ok {
 		return NewAt(8*len(k), n.Node), nil
 	}
-	return findNode(m, k, mode)
+	return findNode(ctx, m, k, mode)
 }
 
 // FindNext returns the fork on a node that matches the key bytes
-func FindNext(n CNode, k []byte, mode Mode) (CNode, bool, error) {
+func FindNext(ctx context.Context, n CNode, k []byte, mode Mode) (CNode, bool, error) {
 	po := Compare(n.Node, k, n.At)
 	if po < mode.Depth() && po < 8*len(k) {
 		cn := n.Node.Fork(po)
-		if err := mode.Unpack(cn.Node); err != nil {
+		if err := mode.Unpack(ctx, cn.Node); err != nil {
 			return CNode{}, false, err
 		}
 		return cn, false, nil

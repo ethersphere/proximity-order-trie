@@ -215,7 +215,7 @@ func TestIterate(t *testing.T) {
 				idx.Add(ctx, e)
 				n := 0
 				max := 0
-				if err := idx.Iterate(s, pivot, func(e elements.Entry) (bool, error) {
+				if err := idx.Iterate(ctx, s, pivot, func(e elements.Entry) (bool, error) {
 					item := e.(*mockEntry).val
 					if max > item {
 						t.Fatalf("not ordered correclty: %v > %v", max, item)
@@ -231,7 +231,7 @@ func TestIterate(t *testing.T) {
 				}
 			}
 			n := 0
-			if err := idx.Iterate(nil, pivot, func(e elements.Entry) (bool, error) {
+			if err := idx.Iterate(ctx, nil, pivot, func(e elements.Entry) (bool, error) {
 				n++
 				return false, nil
 			}); err != nil {

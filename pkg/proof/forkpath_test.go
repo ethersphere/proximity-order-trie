@@ -16,6 +16,7 @@ import (
 func TestForkPathProof(t *testing.T) {
 	// Create an in-memory persister
 	ls := persister.NewInmemLoadSaver()
+	ctx := context.Background()
 
 	tests := []struct {
 		name          string
@@ -56,14 +57,14 @@ func TestForkPathProof(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Handle special test cases
 			if tt.name == "nil root node" {
-				_, err := proof.CreateForkPathProof(nil, ls, make([]byte, 32))
+				_, err := proof.CreateForkPathProof(ctx, nil, ls, make([]byte, 32))
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
 				return
 			}
 			if tt.name == "nil load saver" {
 				root, _ := createTestTrie(t, ls, 1)
-				_, err := proof.CreateForkPathProof(root, nil, make([]byte, 32))
+				_, err := proof.CreateForkPathProof(ctx, root, nil, make([]byte, 32))
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
 				return
@@ -81,12 +82,7 @@ func TestForkPathProof(t *testing.T) {
 				targetKey = keys[2]
 			}
 
-			proofs, err := proof.CreateForkPathProof(root, ls, targetKey)
-			if err != nil {
-				t.Errorf("CreateForkPathProof() unexpected error: %v", err)
-				return
-			}
-
+			proofs, err := proof.CreateForkPathProof(ctx, root, ls, targetKey)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
