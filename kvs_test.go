@@ -85,4 +85,28 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, val2, val)
 	})
+	t.Run("Save KVS and delete one item, test that it is deleted, after-save value exist", func(t *testing.T) {
+		ls := createLs()
+		kvs1, _ := pot.NewSwarmKvs(ls)
+
+		err := kvs1.Put(ctx, key1, val1)
+		assert.NoError(t, err)
+		val, err := kvs1.Get(ctx, key1)
+		assert.NoError(t, err)
+		assert.Equal(t, val1, val)
+		ref, err := kvs1.Save(ctx)
+		assert.NoError(t, err)
+		err = kvs1.Delete(ctx, key1)
+		assert.NoError(t, err)
+		val, err = kvs1.Get(ctx, key1)
+		assert.Error(t, err, "not found")
+
+		// New KVS
+		kvs2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
+		assert.NoError(t, err)
+
+		val, err = kvs2.Get(ctx, key1)
+		assert.NoError(t, err)
+		assert.Equal(t, val1, val)
+	})
 }

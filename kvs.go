@@ -23,6 +23,8 @@ type KeyValueStore interface {
 	Put(ctx context.Context, key, value []byte) error
 	// Save saves key-value pair to the underlying storage and returns the reference.
 	Save(ctx context.Context) ([]byte, error)
+	// Delete takes a key-value pair out of the trie
+	Delete(ctx context.Context, key []byte) error
 }
 
 type SwarmKvs struct {
@@ -88,3 +90,13 @@ func (ps *SwarmKvs) Save(ctx context.Context) ([]byte, error) {
 	}
 	return ref, nil
 }
+
+// Delete takes a key-value pair out of the trie
+func (ps *SwarmKvs) Delete(ctx context.Context, key []byte) error {
+	err := ps.idx.Delete(ctx, key)
+	if err != nil {
+		return fmt.Errorf("failed to delete key-value pair from pot %w", err)
+	}
+	return nil
+}
+
