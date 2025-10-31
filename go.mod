@@ -1,4 +1,4 @@
-module github.com/ethersphere/proximity-order-trie
+module github.com/brainiac-five/pot
 
 go 1.24.0
 
