@@ -2,7 +2,6 @@ package pot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
@@ -15,7 +14,6 @@ type Index struct {
 	write chan elements.Node // hands out current root for writes and locks
 	root  chan elements.Node // channel for new roots
 	quit  chan struct{}      // closing this channel signals quit
-	closed bool
 }
 
 // New constructs a new mutable pot
@@ -26,7 +24,6 @@ func New(mode elements.Mode) (*Index, error) {
 		write: make(chan elements.Node),
 		root:  make(chan elements.Node),
 		quit:  make(chan struct{}),
-		closed: false,
 	}
 
 	root := idx.mode.New()
@@ -42,7 +39,6 @@ func NewReference(ctx context.Context, mode elements.Mode, ref []byte) (*Index, 
 		write: make(chan elements.Node),
 		root:  make(chan elements.Node),
 		quit:  make(chan struct{}),
-		closed: false,
 	}
 
 	root, loaded, err := idx.mode.Load(ctx, ref)
@@ -64,7 +60,6 @@ func (idx *Index) muxProcess(root elements.Node) {
 	for {
 		select {
 		case <-quit:
-			idx.closed = true
 			return
 		case idx.read <- root: //
 		case write <- root: // write locks the pot for writes
@@ -90,10 +85,6 @@ func (idx *Index) Delete(ctx context.Context, k []byte) error {
 // Update exposes the pot update function more directly
 func (idx *Index) Update(ctx context.Context, k []byte, f func(elements.Entry) elements.Entry) error {
 	var root elements.Node
-
-	if idx.closed {
-		return errors.New("trie closed")
-	}
 
 	// get the pot root and capture the write lock
 	select {
@@ -121,11 +112,6 @@ func (idx *Index) Update(ctx context.Context, k []byte, f func(elements.Entry) e
 
 // Find retrieves the entry at the given key from the mutable pot or gives elements.ErrNotFound
 func (idx *Index) Find(ctx context.Context, k []byte) (elements.Entry, error) {
-
-	if idx.closed {
-		return nil, errors.New("trie closed")
-	}
-
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -136,29 +122,20 @@ func (idx *Index) Find(ctx context.Context, k []byte) (elements.Entry, error) {
 
 // Iterate wraps the underlying pot's iterator
 func (idx *Index) Iterate(ctx context.Context, p, k []byte, f func(elements.Entry) (stop bool, err error)) error {
-	if idx.closed {
-		return errors.New("trie closed")
-	}
 	return elements.Iterate(ctx, elements.NewAt(0, <-idx.read), p, k, idx.mode, f)
 }
 
 // Size returns the size (number of entries) of the pot
-func (idx *Index) Size() (int, error) {
-	if idx.closed {
-		return 0, errors.New("trie closed")
-	}
+func (idx *Index) Size() int {
 	root := <-idx.read
 	if root == nil {
-		return 0, nil
+		return 0
 	}
-	return root.Size(), nil
+	return root.Size()
 }
 
 // Save calls the mode specific save method for the root node
 func (idx *Index) Save(ctx context.Context) ([]byte, error) {
-	if idx.closed {
-		return nil, errors.New("trie closed")
-	}
 	root := <-idx.read
 	if root.Empty() {
 		return nil, fmt.Errorf("root node is nil")
@@ -168,19 +145,12 @@ func (idx *Index) Save(ctx context.Context) ([]byte, error) {
 
 // Close quits the process loop and closes the mode
 func (idx *Index) Close() error {
-	if idx.closed {
-		return errors.New("trie closed")
-	}
 	close(idx.quit)
-	idx.closed = true
 	return nil
 }
 
 // String pretty prints the current state of the pot
-func (idx *Index) String() (string, error) {
-	if idx.closed {
-		return "", errors.New("trie closed")
-	}
+func (idx *Index) String() string {
 	root := <-idx.read
-	return elements.NewAt(0, root).String(), nil
+	return elements.NewAt(0, root).String()
 }

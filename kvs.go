@@ -59,11 +59,6 @@ func NewSwarmKvsReference(ctx context.Context, ls persister.LoadSaver, ref []byt
 	}, nil
 }
 
-// Close stops the mutex
-func (ps *SwarmKvs) Close() error {
-	return ps.idx.Close()
-}
-
 // Get retrieves the value associated with the given key.
 func (ps *SwarmKvs) Get(ctx context.Context, key []byte) ([]byte, error) {
 	entry, err := ps.idx.Find(ctx, key)
