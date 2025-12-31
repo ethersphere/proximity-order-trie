@@ -17,7 +17,7 @@ type Mode interface {
 	Up() func(CNode) bool                                                  // dictates which node/entry to promote after deletion
 	Load(context.Context, []byte) (Node, bool, error)                      // loads the pot
 	Save(context.Context) ([]byte, error)                                  // saves the pot
-	Update(context.Context, Node, []byte, func(Entry) Entry) (Node, error) // mode specific update
+	Update(context.Context, Node, []byte, *Entry) (Node, error)            // mode specific update
 }
 
 type SingleOrder struct {
@@ -71,8 +71,8 @@ func (so SingleOrder) Load(context.Context, []byte) (Node, bool, error) {
 }
 
 // Update is mode specific pot update function - NOOP just proxies to pkg wide default
-func (so SingleOrder) Update(ctx context.Context, root Node, k []byte, f func(Entry) Entry) (Node, error) {
-	return Update(ctx, so.New(), NewAt(0, root), k, f, so)
+func (so SingleOrder) Update(ctx context.Context, root Node, k []byte, e *Entry) (Node, error) {
+	return Update(ctx, so.New(), NewAt(0, root), k, e, so)
 }
 
 // Mode for Swarm persisted pots
@@ -124,8 +124,8 @@ func (pm *SwarmPot) Save(ctx context.Context) ([]byte, error) {
 }
 
 // Update builds on the generic Update
-func (pm *SwarmPot) Update(ctx context.Context, root Node, k []byte, f func(Entry) Entry) (Node, error) {
-	update, err := Update(ctx, pm.New(), NewAt(0, root), k, f, pm)
+func (pm *SwarmPot) Update(ctx context.Context, root Node, k []byte, e *Entry) (Node, error) {
+	update, err := Update(ctx, pm.New(), NewAt(0, root), k, e, pm)
 	if err != nil {
 		return nil, err
 	}

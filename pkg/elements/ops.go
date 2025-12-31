@@ -49,8 +49,8 @@ func Whack(acc Node, n, m CNode) {
 }
 
 // Update
-func Update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
-	u, err := update(ctx, acc, cn, k, eqf, mode)
+func Update(ctx context.Context, acc Node, cn CNode, k []byte, e *Entry, mode Mode) (Node, error) {
+	u, err := update(ctx, acc, cn, k, e, mode)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,7 @@ func Update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 	return u, nil
 }
 
-// what `eqf` does(?)
-func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) Entry, mode Mode) (Node, error) {
+func update(ctx context.Context, acc Node, cn CNode, k []byte, entry *Entry, mode Mode) (Node, error) {
 	/**
 	1. **Empty node case**: If target node is empty, simply pin the new entry
 	2. **Exact match case**: Update the entry if needed and use Whack to rebuild
@@ -70,11 +69,10 @@ func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 	5. **Recursive descent**: Using the Mode's policy to determine when to recurse into the trie
 	**/
 	if Empty(cn.Node) {
-		e := eqf(nil)
-		if e == nil {
+		if entry == nil {
 			return nil, nil
 		}
-		acc.Pin(e)
+		acc.Pin(*entry)
 		return acc, nil
 	}
 	cm, match, err := FindNext(ctx, cn, k, mode)
@@ -82,32 +80,30 @@ func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 		return nil, err
 	}
 	if match {
-		orig := cn.Node.Entry()
-		entry := eqf(orig)
 		if entry == nil {
 			node := Pull(acc, cn, mode)
 			return node, nil
 		}
-		if entry.Equal(orig) {
+		orig := cn.Node.Entry()
+		if (*entry).Equal(orig) {
 			return nil, nil
 		}
 		n := mode.New()
-		n.Pin(entry)
+		n.Pin(*entry)
 		Whack(acc, cn, NewAt(mode.Depth(), n))
 		return acc, nil
 	}
 	if Empty(cm.Node) {
-		entry := eqf(nil)
 		if entry == nil {
 			return nil, nil
 		}
 		n := mode.New()
-		n.Pin(entry)
+		n.Pin(*entry)
 		Whirl(acc, cn, NewAt(cm.At, n))
 		return acc, nil
 	}
 	if cm.At == 0 {
-		res, err := update(ctx, acc, cm, k, eqf, mode)
+		res, err := update(ctx, acc, cm, k, entry, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +122,7 @@ func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 		return n, nil
 	}
 	if mode.Down(cm) {
-		res, err := update(ctx, mode.New(), cm, k, eqf, mode)
+		res, err := update(ctx, mode.New(), cm, k, entry, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +130,7 @@ func update(ctx context.Context, acc Node, cn CNode, k []byte, eqf func(Entry) E
 		return acc, nil
 	}
 	Whirl(acc, cn, cm)
-	return update(ctx, acc, cm.Next(), k, eqf, mode)
+	return update(ctx, acc, cm.Next(), k, entry, mode)
 }
 
 // Pull handles node removal and restructuring of the trie.

@@ -74,16 +74,16 @@ func (idx *Index) muxProcess(root elements.Node) {
 
 // Add inserts an entry to the mutable pot
 func (idx *Index) Add(ctx context.Context, e elements.Entry) error {
-	return idx.Update(ctx, e.Key(), func(elements.Entry) elements.Entry { return e })
+	return idx.Update(ctx, e.Key(), &e )
 }
 
 // Delete removes the entry at the given key from the mutable pot
 func (idx *Index) Delete(ctx context.Context, k []byte) error {
-	return idx.Update(ctx, k, func(elements.Entry) elements.Entry { return nil })
+	return idx.Update(ctx, k, nil)
 }
 
 // Update exposes the pot update function more directly
-func (idx *Index) Update(ctx context.Context, k []byte, f func(elements.Entry) elements.Entry) error {
+func (idx *Index) Update(ctx context.Context, k []byte, e *elements.Entry) error {
 	var root elements.Node
 
 	// get the pot root and capture the write lock
@@ -93,7 +93,7 @@ func (idx *Index) Update(ctx context.Context, k []byte, f func(elements.Entry) e
 	case root = <-idx.write:
 	}
 
-	update, err := idx.mode.Update(ctx, root, k, f)
+	update, err := idx.mode.Update(ctx, root, k, e)
 	if err != nil {
 		return err
 	}
