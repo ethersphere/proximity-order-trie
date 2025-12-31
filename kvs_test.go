@@ -109,4 +109,29 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, val1, val)
 	})
+	t.Run("Save KVS with two items, after-load values exist", func(t *testing.T) {
+		ls := createLs()
+		kvs1, _ := pot.NewSwarmKvs(ls)
+
+		err := kvs1.Put(ctx, key1, val1)
+		assert.NoError(t, err)
+
+		err = kvs1.Put(ctx, key2, val2)
+		assert.NoError(t, err)
+
+		ref, err := kvs1.Save(ctx)
+		assert.NoError(t, err)
+
+		// New KVS
+		kvs2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
+		assert.NoError(t, err)
+
+		val, err := kvs2.Get(ctx, key1)
+		assert.NoError(t, err)
+		assert.Equal(t, val1, val)
+
+		val, err = kvs2.Get(ctx, key2)
+		assert.NoError(t, err)
+		assert.Equal(t, val2, val)
+	})
 }
