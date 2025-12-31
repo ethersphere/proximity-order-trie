@@ -106,7 +106,7 @@ func (n *SwarmNode) UnmarshalBinary(buf []byte) error {
 	c := 0
 	poMap := make([]int8, 0, 32)
 	for i := 0; i < 256; i++ {
-		if bitMap[i/8]&(1<<(i%8)) != 0 {
+		if bitMap[i/8]&(1<<(7-i%8)) != 0 {
 			poMap = append(poMap, int8(i))
 			c++
 		}
