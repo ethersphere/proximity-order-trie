@@ -270,7 +270,7 @@ func TestSize(t *testing.T) {
 		defer cancel()
 		t.Run("add", func(t *testing.T) {
 			for i := 0; i < count; i++ {
-				size := idx.Size()
+				size, _ := idx.Size()
 				if size != i {
 					t.Fatalf("incorrect number of items. want %d, got %d", i, size)
 				}
@@ -280,7 +280,7 @@ func TestSize(t *testing.T) {
 		t.Run("update", func(t *testing.T) {
 			for i := 0; i < count; i++ {
 				idx.Add(ctx, &mockEntry{newDetMockEntry(t, i).key, 10000})
-				size := idx.Size()
+				size, _ := idx.Size()
 				if size != count {
 					t.Fatalf("incorrect number of items. want %d, got %d", count, size)
 				}
@@ -289,7 +289,7 @@ func TestSize(t *testing.T) {
 		t.Run("delete", func(t *testing.T) {
 			for i := 0; i < count; i++ {
 				idx.Delete(ctx, newDetMockEntry(t, i).key)
-				size := idx.Size()
+				size, _ := idx.Size()
 				if size != count-i-1 {
 					t.Fatalf("incorrect number of items. want %d, got %d", count-i-1, size)
 				}

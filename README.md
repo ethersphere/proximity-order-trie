@@ -108,8 +108,12 @@ fmt.Println(string(value)) // "world"
 // Persist the KVS to storage
 reference, err := kvs.Save(ctx)
 
+// Release resources
+_ = kvs.Close()
+
 // Later, load the KVS from its reference
 loadedKvs, err := pot.NewSwarmKvsReference(persister, reference)
+...
 ```
 
 ### Index
@@ -144,6 +148,9 @@ err := index.Iterate(prefix, targetKey, func(entry pot.Entry) (bool, error) {
 
 // Persist the index
 ref, err := index.Save(context.Background())
+
+// Release resources
+_ = index.Close()
 ```
 
 ## Proof System & Blockchain Integration
