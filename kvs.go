@@ -99,4 +99,9 @@ func (ps *SwarmKvs) Delete(ctx context.Context, key []byte) error {
 	}
 	return nil
 }
+ 
+// Close stops the mutex
+func (ps *SwarmKvs) Close() error {
+	return ps.idx.Close()
+}
 
