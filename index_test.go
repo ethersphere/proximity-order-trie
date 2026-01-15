@@ -445,6 +445,29 @@ func TestConcurrency(t *testing.T) {
 	})
 }
 
+func TestClosing(t *testing.T) {
+	idx, err := pot.New(basePotMode)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := newDetMockEntry(t, 0)
+	ctx := context.Background()
+	t.Run("add item to closed index", func(t *testing.T) {
+		idx.Close()
+		idx.Add(ctx, want)
+	})
+	t.Run("find item in closed index", func(t *testing.T) {
+		idx.Add(ctx, want)
+		idx.Close()
+		idx.Find(ctx, want.Key())
+	})
+	t.Run("double close index", func(t *testing.T) {
+		idx.Close()
+		idx.Close()
+	})
+}
+
 func newDetMockEntry(t *testing.T, n int) *mockEntry {
 	t.Helper()
 	buf := make([]byte, 4)
