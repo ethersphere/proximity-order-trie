@@ -89,6 +89,7 @@ func (idx *Index) Update(ctx context.Context, k []byte, e *elements.Entry) error
 	// get the pot root and capture the write lock
 	select {
 	case <-ctx.Done():
+		idx.root <- root
 		return ctx.Err()
 	case root = <-idx.write:
 	}
@@ -104,6 +105,7 @@ func (idx *Index) Update(ctx context.Context, k []byte, e *elements.Entry) error
 	// update with new pot root and release the write lock
 	select {
 	case <-ctx.Done():
+		idx.root <- root
 		return ctx.Err()
 	case idx.root <- root:
 	}
