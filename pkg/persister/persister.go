@@ -35,6 +35,9 @@ func NewInmemLoadSaver() *InmemLoadSaver {
 }
 
 func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, error) {
+
+	return nil, fmt.Errorf("mock error")
+
 	if len(reference) != 32 {
 		return nil, fmt.Errorf("reference must be 32 bytes, got %d", len(reference))
 	}
