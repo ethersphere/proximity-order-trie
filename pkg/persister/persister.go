@@ -35,9 +35,6 @@ func NewInmemLoadSaver() *InmemLoadSaver {
 }
 
 func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, error) {
-
-	return nil, fmt.Errorf("mock error")
-
 	if len(reference) != 32 {
 		return nil, fmt.Errorf("reference must be 32 bytes, got %d", len(reference))
 	}
@@ -51,6 +48,9 @@ func (ls *InmemLoadSaver) Load(ctx context.Context, reference []byte) ([]byte, e
 }
 
 func (ls *InmemLoadSaver) Save(ctx context.Context, data []byte) ([]byte, error) {
+
+	return nil, fmt.Errorf("mock error")
+
 	ref := getBMTHash(data)
 	ls.store[ref] = data
 	return ref[:], nil
