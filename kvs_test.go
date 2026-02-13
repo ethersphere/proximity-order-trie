@@ -135,3 +135,49 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.Equal(t, val2, val)
 	})
 }
+
+func TestPotKvs_FailLoad_Save(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	key1, val1 := keyValuePair(t)
+	t.Run("Fail #1 (on load) - Save KVS with one item, loadsaver fails, SIGSEGV", func(t *testing.T) {
+		ls := persister.NewLoadFailingTestLoadSaver()
+		s1, _ := pot.NewSwarmKvs(ls)
+
+		err := s1.Put(ctx, key1, val1)
+		assert.NoError(t, err)
+
+		ref, err := s1.Save(ctx)
+		assert.NoError(t, err)
+
+		s2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
+		assert.NoError(t, err)
+
+		val, err := s2.Get(ctx, key1)
+		assert.NoError(t, err)
+		assert.Equal(t, val1, val)
+	})
+}
+
+func TestPotKvs_FailSave_Save(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	key1, val1 := keyValuePair(t)
+	t.Run("Fail #2 (on save) - Save KVS with one item, loadsaver fails, SIGSEGV", func(t *testing.T) {
+		ls := persister.NewSaveFailingTestLoadSaver()
+		s1, _ := pot.NewSwarmKvs(ls)
+
+		err := s1.Put(ctx, key1, val1)
+		assert.NoError(t, err)
+
+		ref, err := s1.Save(ctx)
+		assert.NoError(t, err)
+
+		s2, err := pot.NewSwarmKvsReference(ctx, ls, ref)
+		assert.NoError(t, err)
+
+		val, err := s2.Get(ctx, key1)
+		assert.NoError(t, err)
+		assert.Equal(t, val1, val)
+	})
+}
