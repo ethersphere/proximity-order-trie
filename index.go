@@ -60,6 +60,10 @@ func (idx *Index) muxProcess(root elements.Node) {
 	for {
 		select {
 		case <-quit:
+			// release root of trie
+			close(idx.read)
+			close(idx.write)
+			close(idx.root)
 			return
 		case idx.read <- root: //
 		case write <- root: // write locks the pot for writes
