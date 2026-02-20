@@ -86,7 +86,7 @@ func update(ctx context.Context, acc Node, cn CNode, k []byte, entry *Entry, mod
 		}
 		orig := cn.Node.Entry()
 		if (*entry).Equal(orig) {
-			return nil, nil
+			return cn.Node, nil
 		}
 		n := mode.New()
 		n.Pin(*entry)
