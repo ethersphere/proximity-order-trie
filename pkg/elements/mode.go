@@ -129,8 +129,10 @@ func (pm *SwarmPot) Update(ctx context.Context, root Node, k []byte, e *Entry) (
 	if err != nil {
 		return nil, err
 	}
-	pm.n = update
-	return update, nil
+	if update != nil {
+		pm.n = update
+	}
+	return pm.n, nil
 }
 
 // Pack serialises and saves the object
