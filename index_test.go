@@ -15,6 +15,7 @@ import (
 	"github.com/ethersphere/proximity-order-trie/pkg/elements"
 	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 	"golang.org/x/sync/errgroup"
+	"github.com/stretchr/testify/assert"
 )
 
 var basePotMode = elements.NewSingleOrder(256)
@@ -348,6 +349,31 @@ func TestPersistence(t *testing.T) {
 	for i := 0; i < count+10; i++ {
 		checkFound(t, ctx, idx, newDetMockEntry(t, i))
 	}
+	t.Run("delete only existent tuple, then save - returns expected save error", func(t *testing.T) {
+		ls = persister.NewInmemLoadSaver()
+		mode = elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
+		idx, err = pot.New(mode)
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		e0 := newDetMockEntry(t, 0)
+		idx.Add(ctx, e0)
+		idx.Delete(ctx, e0.key)
+		_, err := idx.Save(ctx)
+		assert.Error(t, err)
+	})
+	t.Run("delete non-existent tuple from non empty POT, then save - returns unexpected error", func(t *testing.T) {
+		ls = persister.NewInmemLoadSaver()
+		mode = elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
+		idx, err = pot.New(mode)
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		e0 := newDetMockEntry(t, 0)
+		e1 := newDetMockEntry(t, 1)
+		idx.Add(ctx, e0)
+		idx.Delete(ctx, e1.key)
+		_, err := idx.Save(ctx)
+		assert.NoError(t, err)
+	})
 }
 
 func TestConcurrency(t *testing.T) {
