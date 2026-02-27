@@ -349,7 +349,7 @@ func TestPersistence(t *testing.T) {
 	for i := 0; i < count+10; i++ {
 		checkFound(t, ctx, idx, newDetMockEntry(t, i))
 	}
-	t.Run("delete only existent tuple, then save - returns expected save error", func(t *testing.T) {
+	t.Run("delete only existent tuple, then save", func(t *testing.T) {
 		ls = persister.NewInmemLoadSaver()
 		mode = elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 		idx, err = pot.New(mode)
@@ -361,7 +361,7 @@ func TestPersistence(t *testing.T) {
 		_, err := idx.Save(ctx)
 		assert.Error(t, err)
 	})
-	t.Run("delete non-existent tuple from non empty POT, then save - returns unexpected error", func(t *testing.T) {
+	t.Run("delete non-existent tuple from non empty POT, then save", func(t *testing.T) {
 		ls = persister.NewInmemLoadSaver()
 		mode = elements.NewSwarmPot(basePotMode, ls, func(key []byte) elements.Entry { return &mockEntry{key: key} })
 		idx, err = pot.New(mode)
