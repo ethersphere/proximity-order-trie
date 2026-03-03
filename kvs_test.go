@@ -146,5 +146,5 @@ func TestPotKvs_Save(t *testing.T) {
 
 		err = kvs1.Close()
 		assert.NoError(t, err)
-       })
+	})
 }
