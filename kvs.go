@@ -99,4 +99,8 @@ func (ps *SwarmKvs) Delete(ctx context.Context, key []byte) error {
 	}
 	return nil
 }
+// Close shuts down the index and stops the background process loop.
+func (ps *SwarmKvs) Close() error {
+	return ps.idx.Close()
+}
 
