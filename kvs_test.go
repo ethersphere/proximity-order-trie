@@ -134,4 +134,17 @@ func TestPotKvs_Save(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, val2, val)
 	})
+	t.Run("Create KVS, write to it, close it", func(t *testing.T) {
+		ls := createLs()
+		kvs1, _ := pot.NewSwarmKvs(ls)
+
+		err := kvs1.Put(ctx, key1, val1)
+		assert.NoError(t, err)
+
+		_, err = kvs1.Save(ctx)
+		assert.NoError(t, err)
+
+		err = kvs1.Close()
+		assert.NoError(t, err)
+	})
 }
