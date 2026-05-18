@@ -1,4 +1,4 @@
-package persister
+package swarm
 
 import (
 	"bytes"
@@ -9,7 +9,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/proximity-order-trie/pkg/persister"
 )
+
+var _ persister.LoadSaver = (*SwarmLoadSaver)(nil)
 
 type SwarmLoadSaver struct {
 	beeAPIURL string
