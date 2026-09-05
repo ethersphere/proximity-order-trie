@@ -263,6 +263,156 @@ func TestIterate(t *testing.T) {
 	})
 }
 
+// TestIterateWholeStoreUndercount isolates bug 2 from TestIterateAfterLoad's
+// doc comment on its own, with no persistence involved at all: it shows the
+// undercount is purely a consequence of findNode()'s off-by-one and has
+// nothing to do with lazy-loading. 300 pseudo-random (sha256-derived) keys
+// make a root-level fork at bit 0 close to certain, which is what the bug
+// needs; the existing TestIterate above never creates one because all its
+// keys share a fixed 3-byte-range prefix that keeps bit 0 constant.
+func TestIterateWholeStoreUndercount(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	count := 300
+	idx, err := pot.New(elements.NewSingleOrder(256))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer idx.Close()
+	for i := 0; i < count; i++ {
+		if err := idx.Add(ctx, newDetMockEntry(t, i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := 0
+	pivot := make([]byte, 32)
+	if err := idx.Iterate(ctx, nil, pivot, func(e elements.Entry) (bool, error) {
+		n++
+		return false, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if n != count {
+		t.Fatalf("want %d entries, got %d (a root-level fork at bit 0 was likely dropped)", count, n)
+	}
+}
+
+// TestIterateAfterLoad guards against two independent bugs in Iterate(),
+// neither of which TestIterate above catches because it always iterates the
+// same small (count=64), sequentially-keyed Index instance it just built —
+// every node is already resident in memory, and its root never happens to
+// fork on the very first bit. Both bugs need a bigger, more realistically
+// (pseudo-randomly) keyed pot to surface, which is what this test builds.
+//
+// Bug 1 — nil pointer dereference on a pot loaded from a reference.
+// iterate() unpacked the single fork on the path to the pivot key but handed
+// the *other* forks at a node (from Slice()) to its own recursive call
+// without unpacking them first. Empty()/Size()/Entry() on such a node
+// dereference a nil *MemNode as soon as there is more than one matching key
+// below the loaded root.
+//
+// Bug 2 — silent undercount, independent of persistence. findNode()'s
+// "prefix fully matched" branch built the matched node's cursor as
+// NewAt(8*len(prefix), node) — one bit too high. Node.Size() itself uses the
+// correct convention (NewAt(-1, n) for "nothing fixed yet"): a CNode's At is
+// meant to be the position of the *last already-fixed* bit, which for a
+// fully-matched prefix of 8*len(prefix) bits is 8*len(prefix)-1, not
+// 8*len(prefix). The off-by-one boundary then made Slice()/NewAt() start
+// scanning children one bit too late, silently skipping any real fork
+// positioned exactly at that boundary bit (bit 0 for the common case of an
+// empty/no prefix — an entirely ordinary place for two keys to diverge).
+// With 300 pseudo-random keys a root-level fork at bit 0 is close to certain,
+// so this test would fail close to half its count without the fix.
+//
+// This test saves a pot, then opens a *fresh* Index from that save reference
+// (mirroring how a real client loads someone else's data) and asserts that
+// Iterate over it does not panic and returns every entry, in the documented
+// ascending order, both with and without a prefix.
+func TestIterateAfterLoad(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	count := 300
+	ls := persister.NewInmemLoadSaver()
+	newf := func(key []byte) elements.Entry { return &mockEntry{key: key} }
+	mode := elements.NewSwarmPot(basePotMode, ls, newf)
+	idx, err := pot.New(mode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := make(map[string]int, count)
+	for i := 0; i < count; i++ {
+		e := newDetMockEntry(t, i)
+		if err := idx.Add(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+		want[string(e.key)] = e.val
+	}
+	ref, err := idx.Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx.Close()
+
+	// A brand new Index from the reference: every node starts out packed
+	// (MemNode == nil), which is exactly the condition the bug needed.
+	loadMode := elements.NewSwarmPotReference(basePotMode, ls, ref, newf)
+	loaded, err := pot.NewReference(ctx, loadMode, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer loaded.Close()
+
+	t.Run("whole store, no prefix", func(t *testing.T) {
+		got := make(map[string]int, count)
+		var order [][]byte
+		pivot := make([]byte, 32)
+		if err := loaded.Iterate(ctx, nil, pivot, func(e elements.Entry) (bool, error) {
+			got[string(e.Key())] = e.(*mockEntry).val
+			order = append(order, e.Key())
+			return false, nil
+		}); err != nil {
+			t.Fatalf("Iterate on a freshly loaded pot returned an error (want: none): %v", err)
+		}
+		if len(got) != count {
+			t.Fatalf("want %d entries, got %d", count, len(got))
+		}
+		for k, v := range want {
+			if got[k] != v {
+				t.Fatalf("entry %x: want %d, got %d", []byte(k), v, got[k])
+			}
+		}
+		for i := 1; i < len(order); i++ {
+			if bytes.Compare(order[i-1], order[i]) >= 0 {
+				t.Fatalf("not in ascending order at %d: %x then %x", i, order[i-1], order[i])
+			}
+		}
+	})
+
+	t.Run("with a prefix, on the same loaded pot", func(t *testing.T) {
+		// exercise a second Iterate on the same Index so we also cover forks
+		// that a previous call may have already unpacked (Unpack must stay a
+		// safe no-op on nodes that are now in memory).
+		prefix := newDetMockEntry(t, 0).key[:1]
+		n := 0
+		if err := loaded.Iterate(ctx, prefix, make([]byte, 32), func(e elements.Entry) (bool, error) {
+			if e.Key()[0] != prefix[0] {
+				t.Fatalf("entry %x does not match prefix %x", e.Key(), prefix)
+			}
+			n++
+			return false, nil
+		}); err != nil {
+			t.Fatalf("prefixed Iterate on a freshly loaded pot returned an error: %v", err)
+		}
+		if n == 0 {
+			t.Fatalf("expected at least one entry under prefix %x", prefix)
+		}
+	})
+}
+
 func TestSize(t *testing.T) {
 	count := 16
 	test := func(t *testing.T, idx *pot.Index) {
