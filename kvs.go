@@ -99,6 +99,27 @@ func (ps *SwarmKvs) Delete(ctx context.Context, key []byte) error {
 	}
 	return nil
 }
+// Size returns the number of key-value pairs currently in the trie. It reads
+// the count cached on the root node, so it does not walk the trie or touch
+// the network.
+func (ps *SwarmKvs) Size() int {
+	return ps.idx.Size()
+}
+
+// Iterate calls f for every key-value pair whose key starts with the byte
+// prefix `prefix` (nil or empty matches every pair), in ascending order of
+// XOR distance from `pivot` — an all-zero pivot gives plain ascending byte
+// order of the keys. f returns stop=true to end the walk early.
+//
+// The walk descends directly to the sub-trie that shares the prefix, so its
+// cost is proportional to the number of matching pairs plus the depth of the
+// path to them, not the size of the whole store.
+func (ps *SwarmKvs) Iterate(ctx context.Context, prefix, pivot []byte, f func(key, value []byte) (bool, error)) error {
+	return ps.idx.Iterate(ctx, prefix, pivot, func(e elements.Entry) (bool, error) {
+		return f(e.Key(), e.(*SwarmEntry).Value())
+	})
+}
+
 // Close shuts down the index and stops the background process loop.
 func (ps *SwarmKvs) Close() error {
 	return ps.idx.Close()
