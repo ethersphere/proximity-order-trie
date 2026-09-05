@@ -130,6 +130,20 @@ func Iterate(ctx context.Context, n CNode, p, k []byte, mode Mode, f func(Entry)
 }
 
 func iterate(ctx context.Context, n CNode, k []byte, at int, mode Mode, f func(Entry) (bool, error)) (stop bool, err error) {
+	// n arrives unpacked when it is the node Iterate() first descended to, or
+	// the fork explicitly unpacked a few lines below, but NOT for the sibling
+	// forks that Slice() collects: those are handed to us exactly as Fork()
+	// returned them, packed (e.g. a *SwarmNode with only its reference set).
+	// Reading such a node (Empty(), Size(), Entry()...) without unpacking it
+	// first is a nil pointer dereference on any Mode whose nodes start out
+	// packed, which in practice means any pot loaded from a reference with
+	// more than one fork on the path to a matching prefix. Unpack is a no-op
+	// on a node that already has its contents in memory, so doing it
+	// unconditionally here is always correct and only costs a load the first
+	// time a given node is visited.
+	if err := mode.Unpack(ctx, n.Node); err != nil {
+		return true, err
+	}
 	if Empty(n.Node) {
 		return false, nil
 	}
@@ -169,7 +183,18 @@ func findNode(ctx context.Context, n CNode, k []byte, mode Mode) (CNode, error) 
 		return CNode{}, err
 	}
 	if ok {
-		return NewAt(8*len(k), n.Node), nil
+		// n.Node agrees with the prefix k for all 8*len(k) of its bits, so
+		// the last bit that is already fixed (matching the prefix, or, for
+		// an empty prefix, nothing at all) is 8*len(k)-1 — not 8*len(k). A
+		// CNode's At is the position of that last fixed bit (Node.Size()'s
+		// own NewAt(-1, n) uses the same convention for "nothing fixed
+		// yet"), so that Slice/NewAt's "at+1" boundary below correctly
+		// starts scanning children from the first bit actually left open.
+		// Using 8*len(k) here (one past the fixed bits) made that boundary
+		// start one bit too late and silently skip any real fork positioned
+		// exactly at bit 8*len(k) — for an empty prefix, any fork at bit 0,
+		// which is a perfectly ordinary position for two keys to diverge at.
+		return NewAt(8*len(k)-1, n.Node), nil
 	}
 	return findNode(ctx, m, k, mode)
 }
